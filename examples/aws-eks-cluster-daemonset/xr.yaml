@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Example composite for `crossplane render` of the
+# aws-eks-cluster-daemonset blueprint. Used by CI only.
+apiVersion: blueprints.plexsphere.com/v1alpha1
+kind: XAWSEKSClusterDaemonSet
+metadata:
+  name: example-aws-eks-cluster-daemonset
+spec:
+  region: eu-central-1
+  kubernetesVersion: "1.29"
+  nodeCount: 3
+  cloudTags:
+    plexsphere:example: "true"

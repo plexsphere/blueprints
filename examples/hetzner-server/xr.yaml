@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Example composite for `crossplane render` of the hetzner-server
+# blueprint. Used by CI only.
+apiVersion: blueprints.plexsphere.com/v1alpha1
+kind: XHetznerServer
+metadata:
+  name: example-hetzner-server
+spec:
+  location: fsn1
+  serverType: cx22
+  userData: "#cloud-config\n"
+  cloudTags:
+    plexsphere:example: "true"

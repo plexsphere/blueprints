@@ -1,0 +1,45 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Composition for the generic cloud-init VM blueprint. A single
+# Pipeline step delegates rendering to the patch-and-transform
+# function, which threads cloud-init user-data into the VM resource.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: vm-generic-cloudinit
+spec:
+  compositeTypeRef:
+    apiVersion: blueprints.plexsphere.com/v1alpha1
+    kind: XVMGenericCloudInit
+  mode: Pipeline
+  pipeline:
+    - step: render-vm-node
+      functionRef:
+        name: function-patch-and-transform
+      # DECISION: this provider-agnostic blueprint patches the cloud tags
+      # onto a provider-neutral vm.generic.plexsphere.com/v1alpha1
+      # VirtualMachine base targeting spec.forProvider.tags. Alternative
+      # considered: pin a concrete provider GVK (the AWS Instance, the
+      # Hetzner Server, …) as the base. REJECTED — the generic blueprint
+      # declares aws, gcp, hetzner and openstack as supported substrates,
+      # so no single provider managed resource is correct here; the
+      # provider-specific composition is selected at provision time. The
+      # base is therefore a neutral VirtualMachine and the patch targets
+      # the conservative spec.forProvider.tags field name, which the
+      # provider-specific composition rewrites to its own dialect.
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: vm-node
+            base:
+              apiVersion: vm.generic.plexsphere.com/v1alpha1
+              kind: VirtualMachine
+            patches:
+              # Copy the broker-resolved cloud tags onto the conservative
+              # provider tag field so the materialised VM carries the
+              # plexsphere:-prefixed tags on whichever substrate renders it.
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cloudTags
+                toFieldPath: spec.forProvider.tags

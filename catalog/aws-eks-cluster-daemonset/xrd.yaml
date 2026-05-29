@@ -1,0 +1,43 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# CompositeResourceDefinition for the AWS EKS cluster blueprint with a
+# bundled DaemonSet. Request parameters are threaded into the rendered
+# resources through Helm chart values.
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: xawseksclusterdaemonsets.blueprints.plexsphere.com
+spec:
+  group: blueprints.plexsphere.com
+  names:
+    kind: XAWSEKSClusterDaemonset
+    plural: xawseksclusterdaemonsets
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                region:
+                  type: string
+                  description: AWS region the EKS cluster is created in.
+                kubernetesVersion:
+                  type: string
+                  description: EKS control-plane Kubernetes version.
+                nodeCount:
+                  type: integer
+                  description: Number of managed worker nodes in the node group.
+                cloudTags:
+                  type: object
+                  description: Propagation-resolved cloud-provider tags stamped by the broker at render time.
+                  additionalProperties:
+                    type: string
+              required:
+                - region
+                - kubernetesVersion

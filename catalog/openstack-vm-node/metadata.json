@@ -1,0 +1,15 @@
+{
+  "slug": "openstack-vm-node",
+  "displayName": "OpenStack VM Node",
+  "description": "A single OpenStack Nova compute instance bootstrapped through cloud-init user-data.",
+  "version": "v1alpha1",
+  "providerKinds": ["openstack"],
+  "injectionStrategy": "cloud-init-user-data",
+  "parameterSchema": {
+    "parameters": [
+      {"name": "availabilityZone", "type": "string", "required": true},
+      {"name": "flavorName", "type": "string", "required": true},
+      {"name": "rootVolumeGb", "type": "integer", "required": false, "default": 50}
+    ]
+  }
+}

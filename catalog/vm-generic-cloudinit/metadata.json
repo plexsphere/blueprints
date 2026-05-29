@@ -1,0 +1,15 @@
+{
+  "slug": "vm-generic-cloudinit",
+  "displayName": "Generic VM (cloud-init)",
+  "description": "Provider-agnostic single VM node bootstrapped through cloud-init user-data. Targetable at any supported provider substrate.",
+  "version": "v1alpha1",
+  "providerKinds": ["aws", "gcp", "hetzner", "openstack"],
+  "injectionStrategy": "cloud-init-user-data",
+  "parameterSchema": {
+    "parameters": [
+      {"name": "region", "type": "string", "required": true},
+      {"name": "instanceType", "type": "string", "required": false, "default": "standard-2"},
+      {"name": "diskSizeGb", "type": "integer", "required": false, "default": 40}
+    ]
+  }
+}

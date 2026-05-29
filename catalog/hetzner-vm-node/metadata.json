@@ -1,0 +1,15 @@
+{
+  "slug": "hetzner-vm-node",
+  "displayName": "Hetzner Cloud VM Node",
+  "description": "A single Hetzner Cloud server bootstrapped through cloud-init user-data.",
+  "version": "v1alpha1",
+  "providerKinds": ["hetzner"],
+  "injectionStrategy": "cloud-init-user-data",
+  "parameterSchema": {
+    "parameters": [
+      {"name": "location", "type": "string", "required": true},
+      {"name": "serverType", "type": "string", "required": true},
+      {"name": "enableIpv6", "type": "boolean", "required": false, "default": true}
+    ]
+  }
+}

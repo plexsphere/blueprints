@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Example composite for `crossplane render` of the aws-ec2-instance
+# blueprint. Not part of the published bundle; used by CI only.
+apiVersion: blueprints.plexsphere.com/v1alpha1
+kind: XAWSEC2Instance
+metadata:
+  name: example-aws-ec2-instance
+spec:
+  region: eu-central-1
+  instanceType: t3.micro
+  cloudTags:
+    plexsphere:example: "true"

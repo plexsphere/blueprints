@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Function package(s) referenced by the catalog compositions, supplied
+# to `crossplane render` so CI can render each blueprint's example XR.
+# The pin is what render pulls; keep it in step with the function the
+# operator runs.
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-patch-and-transform
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:v0.9.0

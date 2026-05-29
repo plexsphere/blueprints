@@ -1,0 +1,57 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Release: on a semver tag, validate, build the OCI bundle, push it to
+# GHCR, and sign it keyless with cosign (Sigstore: Fulcio code-signing
+# certificate + Rekor inclusion proof). The signed bundle is what
+# plexsphere pins and verifies (plexsphere#293).
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  packages: write   # push the OCI artifact to GHCR
+  id-token: write   # cosign keyless OIDC (Fulcio)
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: oras-project/setup-oras@v1
+      - uses: sigstore/cosign-installer@v3
+
+      - name: Validate before publishing
+        run: |
+          pip install --quiet pyyaml
+          python3 scripts/validate.py
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push bundle
+        run: scripts/build-bundle.sh "${IMAGE}:${GITHUB_REF_NAME}"
+
+      - name: Resolve pushed digest
+        id: digest
+        run: |
+          DIGEST="$(oras manifest fetch --descriptor "${IMAGE}:${GITHUB_REF_NAME}" | jq -r .digest)"
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "Published ${IMAGE}:${GITHUB_REF_NAME} @ ${DIGEST}"
+
+      - name: Sign bundle (cosign keyless)
+        run: cosign sign --yes "${IMAGE}@${{ steps.digest.outputs.digest }}"

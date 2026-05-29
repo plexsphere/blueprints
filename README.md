@@ -113,6 +113,83 @@ dialect.
 - Every YAML file carries an SPDX header. The compositions document their
   base-resource choices inline as `DECISION:` notes.
 
+## Bundle contract
+
+The catalog is published as a single **plain OCI artifact** (built with
+[`oras`](https://oras.land)) that the plexsphere `BlueprintSource` pulls
+and reconciles at runtime. The bundle carries one layer per catalog
+file — including `metadata.json`, so the consumer reads the catalog
+attributes from the bundle, not just the raw Crossplane documents.
+
+- **Artifact type:** `application/vnd.plexsphere.blueprints.catalog.v1`
+- **One layer per file**, each tagged with its repo-relative path in the
+  `org.opencontainers.image.title` annotation
+  (`catalog/<slug>/<file>`) and a per-kind media type:
+
+  | File               | Layer media type                                          |
+  | ------------------ | --------------------------------------------------------- |
+  | `xrd.yaml`         | `application/vnd.plexsphere.blueprint.xrd.v1+yaml`         |
+  | `composition.yaml` | `application/vnd.plexsphere.blueprint.composition.v1+yaml` |
+  | `metadata.json`    | `application/vnd.plexsphere.blueprint.metadata.v1+json`    |
+
+The consumer walks the layers, groups them by slug directory from the
+title annotation, and ingests the three files per blueprint through its
+existing publish path. The build is implemented in
+[`scripts/build-bundle.sh`](scripts/build-bundle.sh).
+
+## Versioning & releases
+
+Bundles are versioned with semver, mapped 1:1 to immutable OCI tags
+(`v0.1.0`, `v0.2.0`, …); the tag is what plexsphere pins and pulls. The
+`metadata.json` `version` field tracks the per-blueprint API version
+(`v1alpha1`) and is independent of the bundle tag.
+
+Pushing a `v*` git tag triggers [`.github/workflows/release.yml`](.github/workflows/release.yml),
+which validates, builds, pushes the bundle to
+`ghcr.io/plexsphere/blueprints:<tag>`, and signs it.
+
+```sh
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+## Verifying the bundle
+
+Each published bundle is signed keyless with
+[cosign](https://github.com/sigstore/cosign) (Sigstore: a Fulcio
+code-signing certificate plus a Rekor inclusion proof), mirroring the
+verification path the plexsphere Artifact Registry context uses. Verify
+a pulled bundle against the release workflow's signing identity:
+
+```sh
+cosign verify ghcr.io/plexsphere/blueprints:v0.1.0 \
+  --certificate-identity-regexp '^https://github.com/plexsphere/blueprints/.github/workflows/release.yml@.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+## Local development
+
+All checks the CI gate runs are reproducible locally:
+
+```sh
+python3 scripts/validate.py                  # structural checks (manifest.ValidatePair mirror)
+yamllint -c .yamllint.yml catalog/ examples/ # lint
+scripts/build-bundle.sh --dry-run ghcr.io/plexsphere/blueprints:dev  # assemble into ./_bundle, no push
+crossplane render examples/<slug>/xr.yaml catalog/<slug>/composition.yaml examples/functions.yaml
+```
+
+## Adding a blueprint
+
+1. Create `catalog/<slug>/` with `xrd.yaml`, `composition.yaml`, and
+   `metadata.json`, following the [Conventions](#conventions) above and
+   carrying the SPDX header on each YAML file.
+2. Add an `examples/<slug>/xr.yaml` composite so CI can `crossplane
+   render` it.
+3. Run `python3 scripts/validate.py` and the lint/render steps above
+   until green.
+4. Open a PR. The `validate` workflow gates lint, structural validation,
+   the build dry-run, and render. Once merged, cut a new `v*` tag to
+   publish a signed bundle.
+
 ## License
 
 Licensed under the Business Source License 1.1 (`BUSL-1.1`).

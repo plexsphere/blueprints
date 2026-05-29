@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# yamllint configuration for the blueprint catalog. Tuned for the
+# catalog conventions: files open with an SPDX comment block (not a
+# `---` document marker), and XRD/Composition descriptions run long.
+extends: default
+
+rules:
+  # Sources start with the SPDX header comment, not a document marker.
+  document-start: disable
+  # Field descriptions and inline DECISION notes are intentionally long.
+  line-length:
+    max: 120
+    level: warning
+  # SPDX header comments sit flush; do not demand two leading spaces.
+  comments:
+    min-spaces-from-content: 1
+  truthy:
+    check-keys: false

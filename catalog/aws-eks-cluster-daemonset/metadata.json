@@ -1,0 +1,15 @@
+{
+  "slug": "aws-eks-cluster-daemonset",
+  "displayName": "AWS EKS Cluster with DaemonSet",
+  "description": "An AWS EKS cluster with a bundled DaemonSet. Request parameters are threaded into the rendered resources through Helm chart values.",
+  "version": "v1alpha1",
+  "providerKinds": ["aws"],
+  "injectionStrategy": "helm-values",
+  "parameterSchema": {
+    "parameters": [
+      {"name": "region", "type": "string", "required": true},
+      {"name": "kubernetesVersion", "type": "string", "required": true},
+      {"name": "nodeCount", "type": "integer", "required": false, "default": 3}
+    ]
+  }
+}

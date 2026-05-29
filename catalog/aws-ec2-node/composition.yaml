@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Composition for the AWS EC2 node blueprint. A single Pipeline step
+# renders the EC2 instance; request parameters are delivered through a
+# provider Secret.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: aws-ec2-node
+spec:
+  compositeTypeRef:
+    apiVersion: blueprints.plexsphere.com/v1alpha1
+    kind: XAWSEC2Node
+  mode: Pipeline
+  pipeline:
+    - step: render-ec2-instance
+      functionRef:
+        name: function-patch-and-transform
+      # DECISION: the patch-and-transform step's base managed resource is
+      # the Upbound provider-aws ec2.aws.upbound.io/v1beta1 Instance.
+      # Alternative considered: leave the step input empty and let a later
+      # blueprint-authoring story choose the base. REJECTED — the
+      # cloud-tag patch's toFieldPath must name a concrete provider tag
+      # field, which only exists once a base is pinned; the Upbound
+      # provider-aws Instance is the EC2 managed resource this blueprint
+      # provisions and exposes spec.forProvider.tags as a string map.
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: ec2-instance
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Instance
+            patches:
+              # Copy the broker-resolved cloud tags onto the AWS provider
+              # tag field so the materialised EC2 instance carries the
+              # plexsphere:-prefixed tags.
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cloudTags
+                toFieldPath: spec.forProvider.tags

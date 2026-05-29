@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Composition for the AWS EKS cluster blueprint. A single Pipeline step
+# renders the EKS cluster and its bundled DaemonSet; request parameters
+# are delivered as Helm chart values.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: aws-eks-cluster-daemonset
+spec:
+  compositeTypeRef:
+    apiVersion: blueprints.plexsphere.com/v1alpha1
+    kind: XAWSEKSClusterDaemonset
+  mode: Pipeline
+  pipeline:
+    - step: render-eks-cluster
+      functionRef:
+        name: function-patch-and-transform
+      # DECISION: the patch-and-transform step's base managed resource is
+      # the Upbound provider-aws eks.aws.upbound.io/v1beta1 Cluster.
+      # Alternative considered: leave the step input empty and let a later
+      # blueprint-authoring story choose the base. REJECTED — the
+      # cloud-tag patch's toFieldPath must name a concrete provider tag
+      # field, which only exists once a base is pinned; the Upbound
+      # provider-aws Cluster is the EKS managed resource this blueprint
+      # provisions and exposes spec.forProvider.tags as a string map.
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: eks-cluster
+            base:
+              apiVersion: eks.aws.upbound.io/v1beta1
+              kind: Cluster
+            patches:
+              # Copy the broker-resolved cloud tags onto the AWS provider
+              # tag field so the materialised EKS cluster carries the
+              # plexsphere:-prefixed tags.
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cloudTags
+                toFieldPath: spec.forProvider.tags

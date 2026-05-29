@@ -1,0 +1,44 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Composition for the OpenStack VM node blueprint. A single Pipeline
+# step renders the OpenStack compute instance and injects cloud-init
+# user-data.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: openstack-vm-node
+spec:
+  compositeTypeRef:
+    apiVersion: blueprints.plexsphere.com/v1alpha1
+    kind: XOpenstackVMNode
+  mode: Pipeline
+  pipeline:
+    - step: render-openstack-instance
+      functionRef:
+        name: function-patch-and-transform
+      # DECISION: the patch-and-transform step's base managed resource is
+      # the Crossplane OpenStack provider
+      # compute.openstack.crossplane.io/v1alpha1 InstanceV2. Alternative
+      # considered: leave the step input empty and let a later
+      # blueprint-authoring story choose the base. REJECTED — the
+      # cloud-tag patch's toFieldPath must name a concrete provider tag
+      # field, which only exists once a base is pinned; the InstanceV2 is
+      # the Nova compute managed resource this blueprint provisions and
+      # OpenStack carries free-form tags as server metadata, so the tags
+      # land on spec.forProvider.metadata rather than a tags field.
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: openstack-instance
+            base:
+              apiVersion: compute.openstack.crossplane.io/v1alpha1
+              kind: InstanceV2
+            patches:
+              # Copy the broker-resolved cloud tags onto the OpenStack
+              # provider server-metadata field so the materialised Nova
+              # instance carries the plexsphere:-prefixed tags.
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cloudTags
+                toFieldPath: spec.forProvider.metadata

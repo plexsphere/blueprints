@@ -1,0 +1,15 @@
+{
+  "slug": "aws-ec2-node",
+  "displayName": "AWS EC2 Node",
+  "description": "A single AWS EC2 instance whose request parameters are threaded in through a provider Secret.",
+  "version": "v1alpha1",
+  "providerKinds": ["aws"],
+  "injectionStrategy": "provider-secret",
+  "parameterSchema": {
+    "parameters": [
+      {"name": "region", "type": "string", "required": true},
+      {"name": "instanceType", "type": "string", "required": true},
+      {"name": "monitoring", "type": "boolean", "required": false, "default": false}
+    ]
+  }
+}

@@ -30,17 +30,17 @@ its composition.
 
 | Slug                                                              | Display name                 | Provider(s)                  | Injection strategy     | Composite kind            |
 | ----------------------------------------------------------------- | ---------------------------- | ---------------------------- | ---------------------- | ------------------------- |
-| [`aws-ec2-node`](catalog/aws-ec2-node/)                           | AWS EC2 Node                 | aws                          | `provider-secret`      | `XAWSEC2Node`             |
-| [`aws-eks-cluster-daemonset`](catalog/aws-eks-cluster-daemonset/) | AWS EKS Cluster w/ DaemonSet | aws                          | `helm-values`          | `XAWSEKSClusterDaemonset` |
-| [`hetzner-vm-node`](catalog/hetzner-vm-node/)                     | Hetzner Cloud VM Node        | hetzner                      | `cloud-init-user-data` | `XHetznerVMNode`          |
-| [`openstack-vm-node`](catalog/openstack-vm-node/)                 | OpenStack VM Node            | openstack                    | `cloud-init-user-data` | `XOpenstackVMNode`        |
-| [`vm-generic-cloudinit`](catalog/vm-generic-cloudinit/)           | Generic VM (cloud-init)      | aws, gcp, hetzner, openstack | `cloud-init-user-data` | `XVMGenericCloudInit`     |
+| [`aws-ec2-instance`](catalog/aws-ec2-instance/)                   | AWS EC2 Instance             | aws                          | `provider-secret`      | `XAWSEC2Instance`         |
+| [`aws-eks-cluster-daemonset`](catalog/aws-eks-cluster-daemonset/) | AWS EKS Cluster w/ DaemonSet | aws                          | `helm-values`          | `XAWSEKSClusterDaemonSet` |
+| [`hetzner-server`](catalog/hetzner-server/)                       | Hetzner Cloud Server         | hetzner                      | `cloud-init-user-data` | `XHetznerServer`          |
+| [`openstack-instance`](catalog/openstack-instance/)               | OpenStack Instance           | openstack                    | `cloud-init-user-data` | `XOpenStackInstance`      |
+| [`generic-vm`](catalog/generic-vm/)                               | Generic VM                   | aws, gcp, hetzner, openstack | `cloud-init-user-data` | `XGenericVM`              |
 
 All blueprints are at version `v1alpha1`.
 
 ### Blueprint details
 
-**`aws-ec2-node`** — A single AWS EC2 instance. Request parameters are
+**`aws-ec2-instance`** — A single AWS EC2 instance. Request parameters are
 threaded in through a provider `Secret`. Renders an Upbound
 `ec2.aws.upbound.io/v1beta1` `Instance`.
 Request parameters: `region` (required), `instanceType` (required),
@@ -52,22 +52,21 @@ an Upbound `eks.aws.upbound.io/v1beta1` `Cluster`.
 Request parameters: `region` (required), `kubernetesVersion` (required),
 `nodeCount` (default `3`).
 
-**`hetzner-vm-node`** — A single Hetzner Cloud server bootstrapped through
+**`hetzner-server`** — A single Hetzner Cloud server bootstrapped through
 cloud-init user-data. Renders an `hcloud.crossplane.io/v1alpha1` `Server`.
 Request parameters: `location` (required), `serverType` (required),
 `enableIpv6` (default `true`).
 
-**`openstack-vm-node`** — A single OpenStack Nova compute instance
+**`openstack-instance`** — A single OpenStack Nova compute instance
 bootstrapped through cloud-init user-data. Renders a
 `compute.openstack.crossplane.io/v1alpha1` `InstanceV2`.
 Request parameters: `availabilityZone` (required), `flavorName`
 (required), `rootVolumeGb` (default `50`).
 
-**`vm-generic-cloudinit`** — A provider-agnostic single VM node
-bootstrapped through cloud-init user-data, targetable at any supported
-substrate. The base is a neutral `vm.generic.plexsphere.com/v1alpha1`
-`VirtualMachine`; the provider-specific composition is selected at
-provision time.
+**`generic-vm`** — A provider-agnostic single VM bootstrapped through
+cloud-init user-data, targetable at any supported substrate. The base is a
+neutral `vm.generic.plexsphere.com/v1alpha1` `VirtualMachine`; the
+provider-specific composition is selected at provision time.
 Request parameters: `region` (required), `instanceType` (default
 `standard-2`), `diskSizeGb` (default `40`).
 

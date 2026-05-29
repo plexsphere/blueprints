@@ -1,18 +1,18 @@
 # SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
 # SPDX-License-Identifier: BUSL-1.1
 #
-# CompositeResourceDefinition for the Hetzner Cloud VM node blueprint.
-# A single Hetzner Cloud server bootstrapped through cloud-init
-# user-data.
+# CompositeResourceDefinition for the AWS EC2 instance blueprint. A
+# single EC2 instance whose request parameters are threaded in through a
+# provider Secret rather than cloud-init user-data.
 apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: xhetznervmnodes.blueprints.plexsphere.com
+  name: xawsec2instances.blueprints.plexsphere.com
 spec:
   group: blueprints.plexsphere.com
   names:
-    kind: XHetznerVMNode
-    plural: xhetznervmnodes
+    kind: XAWSEC2Instance
+    plural: xawsec2instances
   versions:
     - name: v1alpha1
       served: true
@@ -24,20 +24,20 @@ spec:
             spec:
               type: object
               properties:
-                location:
+                region:
                   type: string
-                  description: Hetzner Cloud datacenter location (e.g. fsn1).
-                serverType:
+                  description: AWS region the EC2 instance is launched in.
+                instanceType:
                   type: string
-                  description: Hetzner Cloud server type identifier.
-                userData:
+                  description: EC2 instance type identifier.
+                amiId:
                   type: string
-                  description: cloud-init user-data injected at first boot.
+                  description: AMI image identifier for the instance.
                 cloudTags:
                   type: object
                   description: Propagation-resolved cloud-provider tags stamped by the broker at render time.
                   additionalProperties:
                     type: string
               required:
-                - location
-                - serverType
+                - region
+                - instanceType

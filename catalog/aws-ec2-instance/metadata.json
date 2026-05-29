@@ -1,6 +1,6 @@
 {
-  "slug": "aws-ec2-node",
-  "displayName": "AWS EC2 Node",
+  "slug": "aws-ec2-instance",
+  "displayName": "AWS EC2 Instance",
   "description": "A single AWS EC2 instance whose request parameters are threaded in through a provider Secret.",
   "version": "v1alpha1",
   "providerKinds": ["aws"],

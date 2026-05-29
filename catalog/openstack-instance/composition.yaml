@@ -1,17 +1,17 @@
 # SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
 # SPDX-License-Identifier: BUSL-1.1
 #
-# Composition for the OpenStack VM node blueprint. A single Pipeline
+# Composition for the OpenStack instance blueprint. A single Pipeline
 # step renders the OpenStack compute instance and injects cloud-init
 # user-data.
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: openstack-vm-node
+  name: openstack-instance
 spec:
   compositeTypeRef:
     apiVersion: blueprints.plexsphere.com/v1alpha1
-    kind: XOpenstackVMNode
+    kind: XOpenStackInstance
   mode: Pipeline
   pipeline:
     - step: render-openstack-instance

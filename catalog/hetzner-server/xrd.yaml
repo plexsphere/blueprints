@@ -1,18 +1,18 @@
 # SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
 # SPDX-License-Identifier: BUSL-1.1
 #
-# CompositeResourceDefinition for the AWS EC2 node blueprint. A single
-# EC2 instance whose request parameters are threaded in through a
-# provider Secret rather than cloud-init user-data.
+# CompositeResourceDefinition for the Hetzner Cloud server blueprint.
+# A single Hetzner Cloud server bootstrapped through cloud-init
+# user-data.
 apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: xawsec2nodes.blueprints.plexsphere.com
+  name: xhetznerservers.blueprints.plexsphere.com
 spec:
   group: blueprints.plexsphere.com
   names:
-    kind: XAWSEC2Node
-    plural: xawsec2nodes
+    kind: XHetznerServer
+    plural: xhetznerservers
   versions:
     - name: v1alpha1
       served: true
@@ -24,20 +24,20 @@ spec:
             spec:
               type: object
               properties:
-                region:
+                location:
                   type: string
-                  description: AWS region the EC2 instance is launched in.
-                instanceType:
+                  description: Hetzner Cloud datacenter location (e.g. fsn1).
+                serverType:
                   type: string
-                  description: EC2 instance type identifier.
-                amiId:
+                  description: Hetzner Cloud server type identifier.
+                userData:
                   type: string
-                  description: AMI image identifier for the instance.
+                  description: cloud-init user-data injected at first boot.
                 cloudTags:
                   type: object
                   description: Propagation-resolved cloud-provider tags stamped by the broker at render time.
                   additionalProperties:
                     type: string
               required:
-                - region
-                - instanceType
+                - location
+                - serverType

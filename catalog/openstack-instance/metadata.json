@@ -1,6 +1,6 @@
 {
-  "slug": "openstack-vm-node",
-  "displayName": "OpenStack VM Node",
+  "slug": "openstack-instance",
+  "displayName": "OpenStack Instance",
   "description": "A single OpenStack Nova compute instance bootstrapped through cloud-init user-data.",
   "version": "v1alpha1",
   "providerKinds": ["openstack"],

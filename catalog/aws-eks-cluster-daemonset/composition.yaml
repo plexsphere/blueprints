@@ -11,7 +11,7 @@ metadata:
 spec:
   compositeTypeRef:
     apiVersion: blueprints.plexsphere.com/v1alpha1
-    kind: XAWSEKSClusterDaemonset
+    kind: XAWSEKSClusterDaemonSet
   mode: Pipeline
   pipeline:
     - step: render-eks-cluster

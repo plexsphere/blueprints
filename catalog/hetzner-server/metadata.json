@@ -1,6 +1,6 @@
 {
-  "slug": "hetzner-vm-node",
-  "displayName": "Hetzner Cloud VM Node",
+  "slug": "hetzner-server",
+  "displayName": "Hetzner Cloud Server",
   "description": "A single Hetzner Cloud server bootstrapped through cloud-init user-data.",
   "version": "v1alpha1",
   "providerKinds": ["hetzner"],

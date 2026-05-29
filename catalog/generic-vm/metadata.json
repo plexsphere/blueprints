@@ -1,7 +1,7 @@
 {
-  "slug": "vm-generic-cloudinit",
-  "displayName": "Generic VM (cloud-init)",
-  "description": "Provider-agnostic single VM node bootstrapped through cloud-init user-data. Targetable at any supported provider substrate.",
+  "slug": "generic-vm",
+  "displayName": "Generic VM",
+  "description": "Provider-agnostic single VM bootstrapped through cloud-init user-data. Targetable at any supported provider substrate.",
   "version": "v1alpha1",
   "providerKinds": ["aws", "gcp", "hetzner", "openstack"],
   "injectionStrategy": "cloud-init-user-data",

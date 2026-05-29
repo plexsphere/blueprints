@@ -1,17 +1,17 @@
 # SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
 # SPDX-License-Identifier: BUSL-1.1
 #
-# Composition for the AWS EC2 node blueprint. A single Pipeline step
+# Composition for the AWS EC2 instance blueprint. A single Pipeline step
 # renders the EC2 instance; request parameters are delivered through a
 # provider Secret.
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: aws-ec2-node
+  name: aws-ec2-instance
 spec:
   compositeTypeRef:
     apiVersion: blueprints.plexsphere.com/v1alpha1
-    kind: XAWSEC2Node
+    kind: XAWSEC2Instance
   mode: Pipeline
   pipeline:
     - step: render-ec2-instance

@@ -1,18 +1,18 @@
 # SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
 # SPDX-License-Identifier: BUSL-1.1
 #
-# CompositeResourceDefinition for the generic cloud-init VM blueprint.
-# Provider-agnostic: a single VM node bootstrapped through cloud-init
+# CompositeResourceDefinition for the generic VM blueprint.
+# Provider-agnostic: a single VM bootstrapped through cloud-init
 # user-data, targetable at any of the supported provider substrates.
 apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: xvmgenericcloudinits.blueprints.plexsphere.com
+  name: xgenericvms.blueprints.plexsphere.com
 spec:
   group: blueprints.plexsphere.com
   names:
-    kind: XVMGenericCloudInit
-    plural: xvmgenericcloudinits
+    kind: XGenericVM
+    plural: xgenericvms
   versions:
     - name: v1alpha1
       served: true
@@ -26,7 +26,7 @@ spec:
               properties:
                 region:
                   type: string
-                  description: Provider region the VM node is placed in.
+                  description: Provider region the VM is placed in.
                 instanceType:
                   type: string
                   description: Provider-specific machine size identifier.

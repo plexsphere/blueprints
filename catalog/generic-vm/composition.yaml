@@ -1,20 +1,20 @@
 # SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
 # SPDX-License-Identifier: BUSL-1.1
 #
-# Composition for the generic cloud-init VM blueprint. A single
-# Pipeline step delegates rendering to the patch-and-transform
-# function, which threads cloud-init user-data into the VM resource.
+# Composition for the generic VM blueprint. A single Pipeline step
+# delegates rendering to the patch-and-transform function, which
+# threads cloud-init user-data into the VM resource.
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: vm-generic-cloudinit
+  name: generic-vm
 spec:
   compositeTypeRef:
     apiVersion: blueprints.plexsphere.com/v1alpha1
-    kind: XVMGenericCloudInit
+    kind: XGenericVM
   mode: Pipeline
   pipeline:
-    - step: render-vm-node
+    - step: render-generic-vm
       functionRef:
         name: function-patch-and-transform
       # DECISION: this provider-agnostic blueprint patches the cloud tags
@@ -32,7 +32,7 @@ spec:
         apiVersion: pt.fn.crossplane.io/v1beta1
         kind: Resources
         resources:
-          - name: vm-node
+          - name: generic-vm
             base:
               apiVersion: vm.generic.plexsphere.com/v1alpha1
               kind: VirtualMachine

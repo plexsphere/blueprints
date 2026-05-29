@@ -1,17 +1,17 @@
 # SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
 # SPDX-License-Identifier: BUSL-1.1
 #
-# Composition for the Hetzner Cloud VM node blueprint. A single
+# Composition for the Hetzner Cloud server blueprint. A single
 # Pipeline step renders the Hetzner server resource and injects
 # cloud-init user-data.
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: hetzner-vm-node
+  name: hetzner-server
 spec:
   compositeTypeRef:
     apiVersion: blueprints.plexsphere.com/v1alpha1
-    kind: XHetznerVMNode
+    kind: XHetznerServer
   mode: Pipeline
   pipeline:
     - step: render-hetzner-server

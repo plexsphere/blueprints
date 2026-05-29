@@ -1,18 +1,18 @@
 # SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
 # SPDX-License-Identifier: BUSL-1.1
 #
-# CompositeResourceDefinition for the OpenStack VM node blueprint.
+# CompositeResourceDefinition for the OpenStack instance blueprint.
 # A single OpenStack Nova compute instance bootstrapped through
 # cloud-init user-data.
 apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: xopenstackvmnodes.blueprints.plexsphere.com
+  name: xopenstackinstances.blueprints.plexsphere.com
 spec:
   group: blueprints.plexsphere.com
   names:
-    kind: XOpenstackVMNode
-    plural: xopenstackvmnodes
+    kind: XOpenStackInstance
+    plural: xopenstackinstances
   versions:
     - name: v1alpha1
       served: true

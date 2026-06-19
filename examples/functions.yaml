@@ -11,3 +11,13 @@ metadata:
   name: function-patch-and-transform
 spec:
   package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:v0.9.0
+---
+# function-auto-ready is the second pipeline step of the
+# kubernetes-cloudless-node composition; it propagates the rendered
+# Objects' readiness up to the composite.
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-auto-ready
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-auto-ready:v0.6.6

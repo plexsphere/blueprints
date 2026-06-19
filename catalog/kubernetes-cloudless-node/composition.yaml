@@ -1,0 +1,166 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Composition for the cloudless Kubernetes node blueprint. A
+# function-patch-and-transform step renders two provider-kubernetes
+# Objects against the in-cluster ProviderConfig — a trivial substrate
+# ConfigMap (so the composite reaches Ready=True, the broker's
+# CrossplaneReady signal) and an enrolment Job that POSTs /v1/register so
+# the broker's NodeRegistered precondition flips. function-auto-ready then
+# propagates the Objects' readiness up to the composite.
+#
+# The enrolment Job derives project_id by stripping the well-known
+# `plexsphere-project-` prefix off its own namespace (the management-fleet
+# namespace the broker renders the XR into); the bootstrap token is patched
+# in from spec.parameters.helmValues.bootstrapToken (the broker's
+# helm-values injection); the public key is a fixed valid X25519 key — the
+# node is simulated and never joins the mesh, so a stable key is honest and
+# avoids in-Job keygen. It registers against the in-cluster Service
+# (plexsphere:8080), NOT the broker's injected apiUrl (http://localhost:8080
+# on dev, which targets the host NodePort and is unreachable from a Pod).
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: kubernetes-cloudless-node
+spec:
+  compositeTypeRef:
+    apiVersion: blueprints.plexsphere.com/v1alpha1
+    kind: XKubernetesCloudlessNode
+  mode: Pipeline
+  pipeline:
+    - step: render
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          # The substrate marker: a ConfigMap that reaches Ready as soon as
+          # provider-kubernetes applies it, giving the composite a
+          # Ready=True condition (the broker's CrossplaneReady).
+          - name: substrate
+            base:
+              apiVersion: kubernetes.m.crossplane.io/v1alpha1
+              kind: Object
+              spec:
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: plexsphere-incluster
+                forProvider:
+                  manifest:
+                    apiVersion: v1
+                    kind: ConfigMap
+                    metadata:
+                      name: placeholder
+                    data:
+                      role: plexsphere-cloudless-node
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.namespace
+                toFieldPath: spec.forProvider.manifest.metadata.namespace
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.manifest.metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s-substrate"
+          # The enrolment Job: registers the simulated node so the broker's
+          # NodeRegistered precondition flips (token consumed + peer
+          # anchored asynchronously by the outbox consumer).
+          - name: enrolment
+            base:
+              apiVersion: kubernetes.m.crossplane.io/v1alpha1
+              kind: Object
+              spec:
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: plexsphere-incluster
+                forProvider:
+                  manifest:
+                    apiVersion: batch/v1
+                    kind: Job
+                    metadata:
+                      name: placeholder
+                    spec:
+                      backoffLimit: 6
+                      template:
+                        spec:
+                          restartPolicy: OnFailure
+                          securityContext:
+                            runAsNonRoot: true
+                            # curlimages/curl runs as the named user
+                            # `curl_user` (uid 100); runAsNonRoot needs a
+                            # numeric uid to verify non-root, so pin it.
+                            runAsUser: 100
+                            seccompProfile:
+                              type: RuntimeDefault
+                          containers:
+                            - name: enrol
+                              image: curlimages/curl:8.11.1@sha256:c1fe1679c34d9784c1b0d1e5f62ac0a79fca01fb6377cdd33e90473c6f9f9a69
+                              # The per-Project namespace carries a ResourceQuota
+                              # that requires every container to declare CPU and
+                              # memory requests AND limits; a pod that omits them
+                              # is rejected at admission ("must specify limits.cpu
+                              # …"), so the Job controller can never create the
+                              # enrolment pod. The enrol step is a single short
+                              # curl, so a minimal envelope is ample.
+                              resources:
+                                requests:
+                                  cpu: 10m
+                                  memory: 16Mi
+                                limits:
+                                  cpu: 100m
+                                  memory: 32Mi
+                              securityContext:
+                                allowPrivilegeEscalation: false
+                                readOnlyRootFilesystem: true
+                                capabilities:
+                                  drop:
+                                    - ALL
+                              env:
+                                # env[0] — patched from the injected token.
+                                - name: BOOTSTRAP_TOKEN
+                                  value: placeholder
+                                - name: NAMESPACE
+                                  valueFrom:
+                                    fieldRef:
+                                      fieldPath: metadata.namespace
+                              command:
+                                - /bin/sh
+                                - -c
+                                - |
+                                  set -eu
+                                  PROJECT_ID="${NAMESPACE#plexsphere-project-}"
+                                  NONCE="$(cat /proc/sys/kernel/random/uuid)"
+                                  BODY="$(printf '{"bootstrap_token":"%s","project_id":"%s","resource_id":"cloudless-node","nonce":"%s","public_key":"pUSup6FVosk9ukRLn31c3psrpV8HDTa3VxK16bSbIWw="}' "$BOOTSTRAP_TOKEN" "$PROJECT_ID" "$NONCE")"
+                                  i=0
+                                  while [ "$i" -lt 30 ]; do
+                                    if curl -fsS -X POST -H 'Content-Type: application/json' -d "$BODY" http://plexsphere.default.svc.cluster.local:8080/v1/register; then
+                                      echo "node registered"
+                                      exit 0
+                                    fi
+                                    i=$((i + 1))
+                                    sleep 5
+                                  done
+                                  echo "register failed after retries" >&2
+                                  exit 1
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.namespace
+                toFieldPath: spec.forProvider.manifest.metadata.namespace
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.manifest.metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s-enrol"
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.helmValues.bootstrapToken
+                toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[0].value
+    - step: ready
+      functionRef:
+        name: function-auto-ready

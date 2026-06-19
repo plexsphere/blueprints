@@ -24,12 +24,10 @@ spec:
             spec:
               type: object
               properties:
-                location:
-                  type: string
-                  description: Hetzner Cloud datacenter location (e.g. fsn1).
-                serverType:
-                  type: string
-                  description: Hetzner Cloud server type identifier.
+                parameters:
+                  type: object
+                  description: Free-form blueprint request parameters preserved verbatim for the composition to consume.
+                  x-kubernetes-preserve-unknown-fields: true
                 userData:
                   type: string
                   description: cloud-init user-data injected at first boot.
@@ -38,6 +36,3 @@ spec:
                   description: Propagation-resolved cloud-provider tags stamped by the broker at render time.
                   additionalProperties:
                     type: string
-              required:
-                - location
-                - serverType

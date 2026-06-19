@@ -8,7 +8,10 @@ kind: XAWSEC2Instance
 metadata:
   name: example-aws-ec2-instance
 spec:
-  region: eu-central-1
-  instanceType: t3.micro
+  parameters:
+    region: eu-central-1
+    instanceType: t3.micro
+    monitoring: false
+  userData: "#cloud-config\n"
   cloudTags:
     plexsphere:example: "true"

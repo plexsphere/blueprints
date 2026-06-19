@@ -35,6 +35,7 @@ its composition.
 | [`hetzner-server`](catalog/hetzner-server/)                       | Hetzner Cloud Server         | hetzner                      | `cloud-init-user-data` | `XHetznerServer`          |
 | [`openstack-instance`](catalog/openstack-instance/)               | OpenStack Instance           | openstack                    | `cloud-init-user-data` | `XOpenStackInstance`      |
 | [`generic-vm`](catalog/generic-vm/)                               | Generic VM                   | aws, gcp, hetzner, openstack | `cloud-init-user-data` | `XGenericVM`              |
+| [`kubernetes-cloudless-node`](catalog/kubernetes-cloudless-node/) | Cloudless Kubernetes Node    | aws                          | `helm-values`          | `XKubernetesCloudlessNode` |
 
 All blueprints are at version `v1alpha1`.
 
@@ -70,6 +71,18 @@ provider-specific composition is selected at provision time.
 Request parameters: `region` (required), `instanceType` (default
 `standard-2`), `diskSizeGb` (default `40`).
 
+**`kubernetes-cloudless-node`** — A node materialised entirely in-cluster
+through provider-kubernetes with no cloud account. The composition renders
+a substrate `ConfigMap` (so the composite reaches `Ready=True`) plus an
+enrolment `Job` that POSTs `/v1/register` to register the node against the
+control plane, and a `function-auto-ready` step that propagates the
+Objects' readiness up to the composite. The XRD is `Namespaced` (the
+broker renders it into the per-Project management-fleet namespace), and
+the enrolment token arrives through the broker's `helm-values` injection at
+`spec.parameters.helmValues.bootstrapToken`. Intended for the local dev
+stack and the provisioning tutorial.
+Request parameters: none.
+
 ## Concepts
 
 ### Injection strategies
@@ -84,12 +97,19 @@ resource:
 - **`cloud-init-user-data`** — parameters are injected at first boot via
   cloud-init user-data (the XRD exposes a `userData` field).
 
+Regardless of strategy, every XRD carries a free-form `spec.parameters`
+object (`x-kubernetes-preserve-unknown-fields`) that preserves the broker's
+request parameters verbatim for the composition to consume. Blueprints that
+boot through cloud-init additionally expose a `userData` string, which the
+composition copies onto the provider's native user-data field.
+
 ### Cloud tags
 
 Every XRD exposes a `cloudTags` map. These are propagation-resolved
 cloud-provider tags stamped by the broker at render time (with a
-`plexsphere:` prefix). Each composition copies `spec.cloudTags` onto the
-provider's native tagging field, which differs per provider:
+`plexsphere:` prefix). Each provider-backed composition copies
+`spec.cloudTags` onto the provider's native tagging field, which differs
+per provider:
 
 | Provider  | Provider tag field          |
 | --------- | --------------------------- |
@@ -101,6 +121,10 @@ provider's native tagging field, which differs per provider:
 \* The generic blueprint targets the conservative `spec.forProvider.tags`
 field, which the provider-specific composition rewrites to its own
 dialect.
+
+The `kubernetes-cloudless-node` blueprint is the exception: it renders
+entirely in-cluster through provider-kubernetes and has no cloud tagging
+field to map onto, so its composition does not patch `spec.cloudTags`.
 
 ## Conventions
 

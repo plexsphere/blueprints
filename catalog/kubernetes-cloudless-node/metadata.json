@@ -1,0 +1,11 @@
+{
+  "slug": "kubernetes-cloudless-node",
+  "displayName": "Cloudless Kubernetes Node",
+  "description": "A node materialised entirely in-cluster through provider-kubernetes with no cloud account. The Composition renders a substrate object plus an enrolment Job that registers the node against the control plane, so the broker drives the resource to Ready without a real cloud substrate. Intended for the local dev stack and the provisioning tutorial.",
+  "version": "v1alpha1",
+  "providerKinds": ["aws"],
+  "injectionStrategy": "helm-values",
+  "parameterSchema": {
+    "parameters": []
+  }
+}

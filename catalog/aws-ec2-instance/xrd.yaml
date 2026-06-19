@@ -24,20 +24,15 @@ spec:
             spec:
               type: object
               properties:
-                region:
+                parameters:
+                  type: object
+                  description: Free-form blueprint request parameters preserved verbatim for the composition to consume.
+                  x-kubernetes-preserve-unknown-fields: true
+                userData:
                   type: string
-                  description: AWS region the EC2 instance is launched in.
-                instanceType:
-                  type: string
-                  description: EC2 instance type identifier.
-                amiId:
-                  type: string
-                  description: AMI image identifier for the instance.
+                  description: cloud-init user-data injected at first boot.
                 cloudTags:
                   type: object
                   description: Propagation-resolved cloud-provider tags stamped by the broker at render time.
                   additionalProperties:
                     type: string
-              required:
-                - region
-                - instanceType

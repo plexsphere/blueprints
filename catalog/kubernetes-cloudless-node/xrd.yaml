@@ -1,0 +1,45 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# CompositeResourceDefinition for the cloudless Kubernetes node blueprint.
+# The composite is rendered entirely in-cluster by provider-kubernetes — no
+# cloud managed resources — so the dev stack can drive a provisioned
+# resource to Ready without a cloud account.
+#
+# spec.parameters carries x-kubernetes-preserve-unknown-fields so the
+# broker's helm-values injection (spec.parameters.helmValues.{bootstrapToken,
+# apiUrl,plexdImage}) survives Crossplane's structural-schema prune; the
+# composition reads spec.parameters.helmValues.bootstrapToken off the
+# composite to thread the enrolment token into the Job.
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: xkubernetescloudlessnodes.blueprints.plexsphere.com
+spec:
+  # Crossplane v2 requires an explicit scope; the broker renders the XR
+  # into the per-Project management-fleet namespace, so it is Namespaced.
+  scope: Namespaced
+  group: blueprints.plexsphere.com
+  names:
+    kind: XKubernetesCloudlessNode
+    plural: xkubernetescloudlessnodes
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  description: Free-form blueprint request parameters preserved verbatim for the composition to consume, including the broker-injected helmValues.
+                  x-kubernetes-preserve-unknown-fields: true
+                cloudTags:
+                  type: object
+                  description: Propagation-resolved cloud-provider tags stamped by the broker at render time.
+                  additionalProperties:
+                    type: string

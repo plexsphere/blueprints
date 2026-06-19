@@ -8,8 +8,9 @@ kind: XAWSEKSClusterDaemonSet
 metadata:
   name: example-aws-eks-cluster-daemonset
 spec:
-  region: eu-central-1
-  kubernetesVersion: "1.29"
-  nodeCount: 3
+  parameters:
+    region: eu-central-1
+    kubernetesVersion: "1.29"
+    nodeCount: 3
   cloudTags:
     plexsphere:example: "true"

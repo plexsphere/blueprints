@@ -40,3 +40,9 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.cloudTags
                 toFieldPath: spec.forProvider.tags
+              # Copy the rendered cloud-init user-data onto the conservative
+              # provider user-data field so the materialised EC2 instance boots
+              # with the bootstrap document the broker injected at provision time.
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.userData
+                toFieldPath: spec.forProvider.userData

@@ -8,8 +8,10 @@ kind: XGenericVM
 metadata:
   name: example-generic-vm
 spec:
-  region: eu-central-1
-  instanceType: standard-2
+  parameters:
+    region: eu-central-1
+    instanceType: standard-2
+    diskSizeGb: 40
   userData: "#cloud-config\n"
   cloudTags:
     plexsphere:example: "true"

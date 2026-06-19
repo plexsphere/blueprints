@@ -8,8 +8,10 @@ kind: XHetznerServer
 metadata:
   name: example-hetzner-server
 spec:
-  location: fsn1
-  serverType: cx22
+  parameters:
+    location: fsn1
+    serverType: cx22
+    enableIpv6: true
   userData: "#cloud-config\n"
   cloudTags:
     plexsphere:example: "true"

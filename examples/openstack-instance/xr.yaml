@@ -8,8 +8,10 @@ kind: XOpenStackInstance
 metadata:
   name: example-openstack-instance
 spec:
-  availabilityZone: nova
-  flavorName: m1.small
+  parameters:
+    availabilityZone: nova
+    flavorName: m1.small
+    rootVolumeGb: 50
   userData: "#cloud-config\n"
   cloudTags:
     plexsphere:example: "true"

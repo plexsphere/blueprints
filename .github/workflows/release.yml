@@ -30,6 +30,14 @@ jobs:
           python-version: "3.13"
       - uses: oras-project/setup-oras@v1
       - uses: sigstore/cosign-installer@v3
+        with:
+          # `cosign sign --new-bundle-format` (OCI artifact signing) landed in
+          # cosign v2.6.0 (sigstore/cosign#4316); earlier releases only support
+          # the flag on the *-blob subcommands. Pin a >= 2.6 release so the
+          # requirement is explicit. Staying on 2.6.x (rather than 3.x) keeps
+          # tag-based `sha256-<digest>.sig` triangulation and the Rekor v1
+          # keyless flow the plexsphere importer pins, unchanged.
+          cosign-release: v2.6.3
 
       - name: Validate before publishing
         run: |
@@ -54,4 +62,10 @@ jobs:
           echo "Published ${IMAGE}:${GITHUB_REF_NAME} @ ${DIGEST}"
 
       - name: Sign bundle (cosign keyless)
-        run: cosign sign --yes "${IMAGE}@${{ steps.digest.outputs.digest }}"
+        # --new-bundle-format attaches the signature as a
+        # application/vnd.dev.sigstore.bundle.v0.3+json layer at the
+        # sha256-<digest>.sig triangulation tag — the self-contained Sigstore
+        # bundle (Fulcio cert + Rekor inclusion proof inline) the plexsphere
+        # blueprint importer selects by media type. Without it cosign emits the
+        # legacy simple-signing format and import fails verification.
+        run: cosign sign --yes --new-bundle-format "${IMAGE}@${{ steps.digest.outputs.digest }}"

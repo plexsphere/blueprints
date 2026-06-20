@@ -181,11 +181,15 @@ git tag v0.1.0 && git push origin v0.1.0
 Each published bundle is signed keyless with
 [cosign](https://github.com/sigstore/cosign) (Sigstore: a Fulcio
 code-signing certificate plus a Rekor inclusion proof), mirroring the
-verification path the plexsphere Artifact Registry context uses. Verify
-a pulled bundle against the release workflow's signing identity:
+verification path the plexsphere Artifact Registry context uses. The
+signature is attached in the self-contained Sigstore bundle format
+(`application/vnd.dev.sigstore.bundle.v0.3+json`), so verification needs
+`--new-bundle-format` and cosign `>= 2.6`. Verify a pulled bundle against
+the release workflow's signing identity:
 
 ```sh
 cosign verify ghcr.io/plexsphere/blueprints:v0.1.0 \
+  --new-bundle-format \
   --certificate-identity-regexp '^https://github.com/plexsphere/blueprints/.github/workflows/release.yml@.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```

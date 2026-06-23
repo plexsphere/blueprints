@@ -18,7 +18,9 @@ spec:
       functionRef:
         name: function-patch-and-transform
       # DECISION: the patch-and-transform step's base managed resource is
-      # the Upbound provider-aws ec2.aws.upbound.io/v1beta1 Instance.
+      # the Upbound provider-aws namespaced ec2.aws.m.upbound.io/v1beta1
+      # Instance — the XRD is Namespaced, so the composite can own only
+      # namespaced MRs, not the cluster-scoped ec2.aws.upbound.io variant.
       # Alternative considered: leave the step input empty and let a later
       # blueprint-authoring story choose the base. REJECTED — the
       # cloud-tag patch's toFieldPath must name a concrete provider tag
@@ -31,7 +33,7 @@ spec:
         resources:
           - name: ec2-instance
             base:
-              apiVersion: ec2.aws.upbound.io/v1beta1
+              apiVersion: ec2.aws.m.upbound.io/v1beta1
               kind: Instance
             patches:
               # Copy the broker-resolved cloud tags onto the AWS provider

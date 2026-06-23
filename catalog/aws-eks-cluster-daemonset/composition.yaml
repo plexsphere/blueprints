@@ -18,7 +18,9 @@ spec:
       functionRef:
         name: function-patch-and-transform
       # DECISION: the patch-and-transform step's base managed resource is
-      # the Upbound provider-aws eks.aws.upbound.io/v1beta1 Cluster.
+      # the Upbound provider-aws namespaced eks.aws.m.upbound.io/v1beta1
+      # Cluster — the XRD is Namespaced, so the composite can own only
+      # namespaced MRs, not the cluster-scoped eks.aws.upbound.io variant.
       # Alternative considered: leave the step input empty and let a later
       # blueprint-authoring story choose the base. REJECTED — the
       # cloud-tag patch's toFieldPath must name a concrete provider tag
@@ -31,7 +33,7 @@ spec:
         resources:
           - name: eks-cluster
             base:
-              apiVersion: eks.aws.upbound.io/v1beta1
+              apiVersion: eks.aws.m.upbound.io/v1beta1
               kind: Cluster
             patches:
               # Copy the broker-resolved cloud tags onto the AWS provider

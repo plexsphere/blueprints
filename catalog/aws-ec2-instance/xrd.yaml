@@ -9,6 +9,11 @@ kind: CompositeResourceDefinition
 metadata:
   name: xawsec2instances.blueprints.plexsphere.com
 spec:
+  # Crossplane v2 requires an explicit scope; the broker renders the XR
+  # into the per-Project management-fleet namespace, so it is Namespaced.
+  # A Namespaced composite may compose only namespaced managed resources,
+  # which is why the composition base is the ec2.aws.m.upbound.io variant.
+  scope: Namespaced
   group: blueprints.plexsphere.com
   names:
     kind: XAWSEC2Instance

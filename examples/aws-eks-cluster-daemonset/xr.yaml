@@ -7,6 +7,7 @@ apiVersion: blueprints.plexsphere.com/v1alpha1
 kind: XAWSEKSClusterDaemonSet
 metadata:
   name: example-aws-eks-cluster-daemonset
+  namespace: plexsphere-project-example
 spec:
   parameters:
     region: eu-central-1

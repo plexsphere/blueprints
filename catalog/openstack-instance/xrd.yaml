@@ -9,6 +9,13 @@ kind: CompositeResourceDefinition
 metadata:
   name: xopenstackinstances.blueprints.plexsphere.com
 spec:
+  # Crossplane v2 requires an explicit scope. This blueprint composes a
+  # cluster-scoped provider MR (compute.openstack.crossplane.io); the
+  # provider advertises Crossplane v2 namespaced MRs but its namespaced
+  # (.m.) API group is not yet confirmed, so the XR is Cluster-scoped — a
+  # Namespaced XR may own only namespaced MRs. Revisit to Namespaced once
+  # the OpenStack provider's namespaced group is confirmed.
+  scope: Cluster
   group: blueprints.plexsphere.com
   names:
     kind: XOpenStackInstance

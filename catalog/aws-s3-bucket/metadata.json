@@ -5,6 +5,7 @@
   "version": "v1alpha1",
   "providerKinds": ["aws"],
   "injectionStrategy": "provider-secret",
+  "meshRole": "standalone",
   "parameterSchema": {
     "parameters": [
       {"name": "region", "type": "string", "required": true}

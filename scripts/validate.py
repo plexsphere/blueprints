@@ -39,6 +39,13 @@ INJECTION_STRATEGIES = {
     "helm-values",
     "cloud-init-user-data",
 }
+# Optional lifecycle hint the broker reads to decide whether the resource
+# enrols a mesh Node ("node", the default when omitted) or is a nodeless
+# cloud object the substrate composes straight to Ready ("standalone").
+MESH_ROLES = {
+    "node",
+    "standalone",
+}
 
 
 def load_yaml(path: Path) -> dict:
@@ -129,6 +136,11 @@ def validate_blueprint(d: Path) -> list[str]:
         errs.append(
             f"{slug}: injectionStrategy {meta.get('injectionStrategy')!r} "
             f"not one of {sorted(INJECTION_STRATEGIES)}"
+        )
+    # meshRole is optional (defaults to "node"); reject only a present-but-bogus value.
+    if "meshRole" in meta and meta["meshRole"] not in MESH_ROLES:
+        errs.append(
+            f"{slug}: meshRole {meta['meshRole']!r} not one of {sorted(MESH_ROLES)}"
         )
     pk = meta.get("providerKinds")
     if not isinstance(pk, list) or not pk:

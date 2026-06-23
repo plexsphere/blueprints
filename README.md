@@ -32,6 +32,7 @@ its composition.
 | ----------------------------------------------------------------- | ---------------------------- | ---------------------------- | ---------------------- | ------------------------- |
 | [`aws-ec2-instance`](catalog/aws-ec2-instance/)                   | AWS EC2 Instance             | aws                          | `provider-secret`      | `XAWSEC2Instance`         |
 | [`aws-eks-cluster-daemonset`](catalog/aws-eks-cluster-daemonset/) | AWS EKS Cluster w/ DaemonSet | aws                          | `helm-values`          | `XAWSEKSClusterDaemonSet` |
+| [`aws-s3-bucket`](catalog/aws-s3-bucket/)                         | AWS S3 Bucket                | aws                          | `provider-secret`      | `XAWSS3Bucket`            |
 | [`hetzner-server`](catalog/hetzner-server/)                       | Hetzner Cloud Server         | hetzner                      | `cloud-init-user-data` | `XHetznerServer`          |
 | [`openstack-instance`](catalog/openstack-instance/)               | OpenStack Instance           | openstack                    | `cloud-init-user-data` | `XOpenStackInstance`      |
 | [`generic-vm`](catalog/generic-vm/)                               | Generic VM                   | aws, gcp, hetzner, openstack | `cloud-init-user-data` | `XGenericVM`              |
@@ -52,6 +53,16 @@ DaemonSet. Request parameters are delivered as Helm chart values. Renders
 an Upbound `eks.aws.upbound.io/v1beta1` `Cluster`.
 Request parameters: `region` (required), `kubernetesVersion` (required),
 `nodeCount` (default `3`).
+
+**`aws-s3-bucket`** — A single AWS S3 bucket whose request parameters are
+threaded in through a provider `Secret`. It carries no AMI/VPC/subnet
+dependency graph, so it is the lowest-risk AWS resource to drive to `Ready`
+against a local AWS emulator. The XRD is `Namespaced` (the broker renders
+it into the per-Project management-fleet namespace), so the composition
+renders a namespaced `s3.aws.m.upbound.io/v1beta1` `Bucket`. Declares
+`meshRole: standalone` (see [Mesh role](#mesh-role)) — there is no node to
+enrol, so the broker reaches `Ready` the moment the bucket composes.
+Request parameters: `region` (required).
 
 **`hetzner-server`** — A single Hetzner Cloud server bootstrapped through
 cloud-init user-data. Renders an `hcloud.crossplane.io/v1alpha1` `Server`.
@@ -79,8 +90,10 @@ control plane, and a `function-auto-ready` step that propagates the
 Objects' readiness up to the composite. The XRD is `Namespaced` (the
 broker renders it into the per-Project management-fleet namespace), and
 the enrolment token arrives through the broker's `helm-values` injection at
-`spec.parameters.helmValues.bootstrapToken`. Intended for the local dev
-stack and the provisioning tutorial.
+`spec.parameters.helmValues.bootstrapToken`. It declares `meshRole: node`
+(the default; see [Mesh role](#mesh-role)) — the broker mints a bootstrap
+token and waits through `Enrolling` for the node to register. Intended for
+the local dev stack and the provisioning tutorial.
 Request parameters: none.
 
 ## Concepts
@@ -102,6 +115,26 @@ object (`x-kubernetes-preserve-unknown-fields`) that preserves the broker's
 request parameters verbatim for the composition to consume. Blueprints that
 boot through cloud-init additionally expose a `userData` string, which the
 composition copies onto the provider's native user-data field.
+
+### Mesh role
+
+A blueprint may declare an optional `meshRole` in its `metadata.json`,
+which the broker reads to decide the resource lifecycle:
+
+- **`node`** (the default when omitted) — the resource provisions a
+  mesh-enrolling plexd node. The broker mints a bootstrap token and waits
+  through an `Enrolling` phase for the node to register before `Ready`
+  (and a `Deregistering` phase on teardown).
+- **`standalone`** — the resource is a nodeless cloud object (an S3
+  bucket, a managed database) with no node to enrol. The broker mints no
+  token and reaches `Ready` the moment the substrate composes, skipping
+  `Enrolling` (and `Deregistering`).
+
+`kubernetes-cloudless-node` is a `node` (it renders an enrolment Job that
+registers against the control plane); `aws-s3-bucket` is `standalone`, so
+the broker can drive it `Pending → Provisioning → Ready` against a local
+AWS emulator with no node to wait on. The remaining blueprints omit the
+field and inherit the `node` default.
 
 ### Cloud tags
 

@@ -7,6 +7,7 @@ apiVersion: blueprints.plexsphere.com/v1alpha1
 kind: XAWSEC2Instance
 metadata:
   name: example-aws-ec2-instance
+  namespace: plexsphere-project-example
 spec:
   parameters:
     region: eu-central-1

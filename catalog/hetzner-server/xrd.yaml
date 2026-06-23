@@ -9,6 +9,12 @@ kind: CompositeResourceDefinition
 metadata:
   name: xhetznerservers.blueprints.plexsphere.com
 spec:
+  # Crossplane v2 requires an explicit scope. This blueprint composes a
+  # cluster-scoped provider MR (hcloud.crossplane.io) whose provider does
+  # not yet serve a Crossplane v2 namespaced (.m.) variant, so the XR is
+  # Cluster-scoped — a Namespaced XR may own only namespaced MRs. Revisit
+  # to Namespaced once the Hetzner provider ships namespaced MRs.
+  scope: Cluster
   group: blueprints.plexsphere.com
   names:
     kind: XHetznerServer

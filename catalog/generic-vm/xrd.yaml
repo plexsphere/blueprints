@@ -9,6 +9,11 @@ kind: CompositeResourceDefinition
 metadata:
   name: xgenericvms.blueprints.plexsphere.com
 spec:
+  # Crossplane v2 requires an explicit scope; the broker renders the XR
+  # into the per-Project management-fleet namespace, so it is Namespaced.
+  # The provider-neutral VirtualMachine base is an in-repo abstraction with
+  # no cluster-scoped provider MR, so Namespaced is the consistent choice.
+  scope: Namespaced
   group: blueprints.plexsphere.com
   names:
     kind: XGenericVM

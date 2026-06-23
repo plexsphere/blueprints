@@ -1,0 +1,62 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Composition for the AWS S3 bucket blueprint. A single
+# function-patch-and-transform step renders one namespaced S3 Bucket
+# against the AWS provider's ClusterProviderConfig; function-auto-ready
+# then propagates the Bucket's readiness up to the composite so a
+# provisioned Resource reaches Ready=True.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: aws-s3-bucket
+spec:
+  compositeTypeRef:
+    apiVersion: blueprints.plexsphere.com/v1alpha1
+    kind: XAWSS3Bucket
+  mode: Pipeline
+  pipeline:
+    - step: render
+      functionRef:
+        name: function-patch-and-transform
+      # DECISION: the base managed resource is the Upbound provider-aws
+      # NAMESPACED s3.aws.m.upbound.io/v1beta1 Bucket, not the cluster-scoped
+      # s3.aws.upbound.io variant the older aws-ec2-instance blueprint uses.
+      # Alternative considered: reuse the cluster-scoped Bucket like the other
+      # AWS blueprints. REJECTED — this XRD is Namespaced (the broker renders
+      # the XR into a per-Project namespace), and Crossplane v2 only lets a
+      # namespaced composite own namespaced resources (Kubernetes forbids a
+      # namespaced owner of a cluster-scoped resource, and Crossplane's
+      # owner-reference garbage collection depends on that ownership). The
+      # namespaced Bucket references the cluster-scoped ClusterProviderConfig,
+      # which carries the static endpoint + credentials the dev stack installs.
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: bucket
+            base:
+              apiVersion: s3.aws.m.upbound.io/v1beta1
+              kind: Bucket
+              spec:
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: plexsphere-aws
+                forProvider:
+                  # forceDestroy lets the provider delete a non-empty bucket
+                  # when the Resource is deprovisioned, so the dev/e2e teardown
+                  # never strands a bucket that still holds objects.
+                  forceDestroy: true
+            patches:
+              # The per-resource region the request targets.
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              # Copy the broker-resolved cloud tags onto the AWS provider tag
+              # field so the materialised bucket carries the plexsphere:-prefixed tags.
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cloudTags
+                toFieldPath: spec.forProvider.tags
+    - step: ready
+      functionRef:
+        name: function-auto-ready

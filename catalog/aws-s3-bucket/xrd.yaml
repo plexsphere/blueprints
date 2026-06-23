@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# CompositeResourceDefinition for the AWS S3 bucket blueprint. A single
+# S3 bucket whose request parameters are threaded in through a provider
+# Secret. Unlike aws-ec2-instance it has no AMI/VPC/subnet dependency
+# graph, so it is the lowest-risk AWS resource to drive to Ready against
+# a local AWS emulator.
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: xawss3buckets.blueprints.plexsphere.com
+spec:
+  # Crossplane v2 requires an explicit scope; the broker renders the XR
+  # into the per-Project management-fleet namespace, so it is Namespaced.
+  # A Namespaced composite may compose only namespaced managed resources,
+  # which is why the composition's base is the s3.aws.m.upbound.io Bucket.
+  scope: Namespaced
+  group: blueprints.plexsphere.com
+  names:
+    kind: XAWSS3Bucket
+    plural: xawss3buckets
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  description: Free-form blueprint request parameters preserved verbatim for the composition to consume.
+                  x-kubernetes-preserve-unknown-fields: true
+                cloudTags:
+                  type: object
+                  description: Propagation-resolved cloud-provider tags stamped by the broker at render time.
+                  additionalProperties:
+                    type: string

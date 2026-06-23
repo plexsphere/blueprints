@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Example composite for `crossplane render` of the aws-s3-bucket
+# blueprint. Not part of the published bundle; used by CI only. The
+# composite is Namespaced, so it carries a namespace mimicking the
+# broker's per-Project management-fleet namespace (plexsphere-project-<id>).
+apiVersion: blueprints.plexsphere.com/v1alpha1
+kind: XAWSS3Bucket
+metadata:
+  name: example-aws-s3-bucket
+  namespace: plexsphere-project-example
+spec:
+  parameters:
+    region: us-east-1
+  cloudTags:
+    plexsphere:example: "true"

@@ -1,0 +1,13 @@
+{
+  "slug": "aws-s3-bucket",
+  "displayName": "AWS S3 Bucket",
+  "description": "A single AWS S3 bucket whose request parameters are threaded in through a provider Secret. Dependency-free, so it can be driven to Ready against a local AWS emulator.",
+  "version": "v1alpha1",
+  "providerKinds": ["aws"],
+  "injectionStrategy": "provider-secret",
+  "parameterSchema": {
+    "parameters": [
+      {"name": "region", "type": "string", "required": true}
+    ]
+  }
+}

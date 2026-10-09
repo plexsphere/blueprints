@@ -38,7 +38,7 @@ its composition.
 | [`generic-vm`](catalog/generic-vm/)                               | Generic VM                   | aws, gcp, hetzner, openstack | `cloud-init-user-data` | `XGenericVM`              |
 | [`kubernetes-cloudless-node`](catalog/kubernetes-cloudless-node/) | Cloudless Kubernetes Node    | aws                          | `helm-values`          | `XKubernetesCloudlessNode` |
 
-All blueprints are at version `v1alpha1`.
+Every blueprint is at version `v1alpha1` except `openstack-instance`, which is at `v1alpha2`.
 
 ### Blueprint details
 
@@ -69,11 +69,26 @@ cloud-init user-data. Renders an `hcloud.crossplane.io/v1alpha1` `Server`.
 Request parameters: `location` (required), `serverType` (required),
 `enableIpv6` (default `true`).
 
-**`openstack-instance`** — A single OpenStack Nova compute instance
-bootstrapped through cloud-init user-data. Renders a
-`compute.openstack.crossplane.io/v1alpha1` `InstanceV2`.
-Request parameters: `availabilityZone` (required), `flavorName`
-(required), `rootVolumeGb` (default `50`).
+**`openstack-instance`** — A single OpenStack Nova server that boots the
+plexsphere broker's cloud-init document and registers as a plexsphere
+node. The XRD is `Namespaced` (the broker renders it into the per-Project
+management-fleet namespace), so the composition renders a namespaced
+`compute.openstack.m.crossplane.io/v1alpha1` `InstanceV2` of
+`provider-openstack` v0.11.0, bound to the `ProviderConfig` named
+`openstack` that the broker writes into the same namespace. The server
+takes its name from the composite, its image, flavor and network from the
+request, the broker's cloud-init document as user data, and the
+propagated cloud tags as server metadata; a `function-auto-ready` step
+marks the composite `Ready` once the server is. Declares `meshRole: node`
+explicitly. Version `v1alpha1` of this entry was `Cluster`-scoped; a CRD's
+scope and a Composition's `compositeTypeRef` are immutable, so a
+management cluster that still holds the `v1alpha1` entry must delete
+both the XRD `xopenstackinstances.blueprints.plexsphere.com` and the
+Composition `openstack-instance` before applying this one. Deleting the
+XRD deletes every `XOpenStackInstance` on that cluster and, under the
+default `deletionPolicy: Delete`, its OpenStack server.
+Request parameters: `imageName` (required), `flavorName` (required),
+`networkName` (required), `availabilityZone` (optional, no default).
 
 **`generic-vm`** — A provider-agnostic single VM bootstrapped through
 cloud-init user-data, targetable at any supported substrate. The base is a
@@ -133,8 +148,9 @@ which the broker reads to decide the resource lifecycle:
 `kubernetes-cloudless-node` is a `node` (it renders an enrolment Job that
 registers against the control plane); `aws-s3-bucket` is `standalone`, so
 the broker can drive it `Pending → Provisioning → Ready` against a local
-AWS emulator with no node to wait on. The remaining blueprints omit the
-field and inherit the `node` default.
+AWS emulator with no node to wait on. `openstack-instance` declares `node`
+explicitly. The remaining four blueprints omit the field and inherit the
+`node` default.
 
 ### Cloud tags
 
@@ -196,18 +212,42 @@ existing publish path. The build is implemented in
 
 ## Versioning & releases
 
-Bundles are versioned with semver, mapped 1:1 to immutable OCI tags
-(`v0.1.0`, `v0.2.0`, …); the tag is what plexsphere pins and pulls. The
-`metadata.json` `version` field tracks the per-blueprint API version
-(`v1alpha1`) and is independent of the bundle tag.
+Bundles are published to `ghcr.io/plexsphere/blueprints:<tag>`, one OCI
+tag per git tag. The `v1` tag is the one plexsphere deployments import
+(the plexsphere lab registers it as a catalog source with pinned
+tracking), and it moves: each release re-points `v1` at the merged
+`main` and publishes and signs the bundle under it again.
+
+The `metadata.json` `version` field is the per-blueprint version label
+and is independent of the bundle tag. A deployment's import compares
+every entry against what it imported before: a new label is imported as
+a new immutable version, identical content under the same label is
+`unchanged`, and changed content under the same label is reported as
+`drift` and never replaces the imported version. A change to an entry
+therefore moves its `version`, and the XRD's served version that
+`scripts/validate.py` holds equal to it, to a new label, as
+`openstack-instance` moved from `v1alpha1` to `v1alpha2`. A deployment
+picks the new label up on its next import of `v1`.
 
 Pushing a `v*` git tag triggers [`.github/workflows/release.yml`](.github/workflows/release.yml),
 which validates, builds, pushes the bundle to
-`ghcr.io/plexsphere/blueprints:<tag>`, and signs it.
+`ghcr.io/plexsphere/blueprints:<tag>`, and signs it. To release the
+catalog, move `v1` to the merged commit:
 
 ```sh
-git tag v0.1.0 && git push origin v0.1.0
+git fetch origin
+git tag -f v1 origin/main
+git push --force origin refs/tags/v1
 ```
+
+Release runs on the same tag queue one at a time, and a run refuses to
+publish once the tag no longer points at its commit. A re-run of an
+older run takes the queue's pending slot, which cancels a pending run of
+a newer move. The re-run then fails with `refusing a stale publish`, and
+`ghcr.io/plexsphere/blueprints:v1` keeps the previous bundle. The failed
+run's summary names the commit `v1` points at; if the run for that
+commit shows as cancelled, re-run it so the bundle under `v1` matches
+the tag.
 
 ## Verifying the bundle
 

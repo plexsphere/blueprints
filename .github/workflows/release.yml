@@ -11,6 +11,13 @@ on:
   push:
     tags: ["v*"]
 
+# Every move of the `v1` tag starts a run on the same ref, and each run
+# pushes and signs by that tag. Queue runs per ref, never cancelling one
+# mid-push, so the last move publishes last and signs its own digest.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
   packages: write   # push the OCI artifact to GHCR
@@ -23,6 +30,9 @@ env:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # Runs on a ref are serialized (see concurrency), so a stalled push must
+    # not hold the queue for GitHub's 6h default.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -50,6 +60,27 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Refuse to publish a superseded tag position
+        # The concurrency group orders runs by start time, not by where the
+        # tag points. A re-run of an older run would push its commit's bundle
+        # over the one a newer move already published, so stop when the tag
+        # no longer points at this run's commit. A re-run also takes the
+        # queue's pending slot and cancels a newer pending run, so the error
+        # names the commit whose run needs re-running.
+        run: |
+          git fetch --no-tags --depth=1 origin "+refs/tags/${GITHUB_REF_NAME}:refs/tmp/current"
+          CURRENT="$(git rev-parse 'refs/tmp/current^{commit}')"
+          OURS="$(git rev-parse HEAD)"
+          if [ "${CURRENT}" != "${OURS}" ]; then
+            echo "::error::${GITHUB_REF_NAME} now points at ${CURRENT}, not ${OURS}; refusing a stale publish"
+            {
+              echo "### Stale release run refused"
+              echo "${GITHUB_REF_NAME} now points at \`${CURRENT}\`. If the run for that commit shows as"
+              echo "cancelled, re-run it so the bundle under ${GITHUB_REF_NAME} matches the tag."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
 
       - name: Build and push bundle
         run: scripts/build-bundle.sh "${IMAGE}:${GITHUB_REF_NAME}"

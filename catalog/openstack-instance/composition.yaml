@@ -1,50 +1,74 @@
 # SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
 # SPDX-License-Identifier: BUSL-1.1
 #
-# Composition for the OpenStack instance blueprint. A single Pipeline
-# step renders the OpenStack compute instance and injects cloud-init
-# user-data.
+# Composition for the OpenStack instance blueprint. Patch-and-transform
+# renders one namespaced provider-openstack InstanceV2 from the
+# composite's name, parameters, user data and cloud tags; auto-ready
+# marks the composite Ready once the server is.
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
   name: openstack-instance
 spec:
   compositeTypeRef:
-    apiVersion: blueprints.plexsphere.com/v1alpha1
+    apiVersion: blueprints.plexsphere.com/v1alpha2
     kind: XOpenStackInstance
   mode: Pipeline
   pipeline:
     - step: render-openstack-instance
       functionRef:
         name: function-patch-and-transform
-      # DECISION: the patch-and-transform step's base managed resource is
-      # the Crossplane OpenStack provider
-      # compute.openstack.crossplane.io/v1alpha1 InstanceV2. Alternative
-      # considered: leave the step input empty and let a later
-      # blueprint-authoring story choose the base. REJECTED — the
-      # cloud-tag patch's toFieldPath must name a concrete provider tag
-      # field, which only exists once a base is pinned; the InstanceV2 is
-      # the Nova compute managed resource this blueprint provisions and
-      # OpenStack carries free-form tags as server metadata, so the tags
-      # land on spec.forProvider.metadata rather than a tags field.
       input:
         apiVersion: pt.fn.crossplane.io/v1beta1
         kind: Resources
         resources:
           - name: openstack-instance
             base:
-              apiVersion: compute.openstack.crossplane.io/v1alpha1
+              apiVersion: compute.openstack.m.crossplane.io/v1alpha1
               kind: InstanceV2
+              spec:
+                # DECISION: the server authenticates through the
+                # namespaced ProviderConfig the plexsphere broker writes
+                # into the composite's namespace, named after the Cloud's
+                # provider. Rejected: the provider's default
+                # ClusterProviderConfig "default", which nothing writes.
+                providerConfigRef:
+                  kind: ProviderConfig
+                  name: openstack
+                forProvider: {}
             patches:
-              # Copy the broker-resolved cloud tags onto the OpenStack
-              # provider server-metadata field so the materialised Nova
-              # instance carries the plexsphere:-prefixed tags.
+              # The provider refuses to create a server without a name.
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.cloudTags
-                toFieldPath: spec.forProvider.metadata
-              # Copy the rendered cloud-init user-data onto the conservative
-              # provider user-data field so the materialised instance boots
-              # with the bootstrap document the broker injected at provision time.
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.imageName
+                toFieldPath: spec.forProvider.imageName
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.flavorName
+                toFieldPath: spec.forProvider.flavorName
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.networkName
+                toFieldPath: spec.forProvider.network[0].name
+                policy:
+                  fromFieldPath: Required
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.availabilityZone
+                toFieldPath: spec.forProvider.availabilityZone
+              # The broker's cloud-init document.
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.userData
                 toFieldPath: spec.forProvider.userData
+                policy:
+                  fromFieldPath: Required
+              # OpenStack carries free-form tags as server metadata.
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cloudTags
+                toFieldPath: spec.forProvider.metadata
+    - step: ready
+      functionRef:
+        name: function-auto-ready

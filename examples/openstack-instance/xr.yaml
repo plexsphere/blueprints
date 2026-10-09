@@ -2,16 +2,19 @@
 # SPDX-License-Identifier: BUSL-1.1
 #
 # Example composite for `crossplane render` of the openstack-instance
-# blueprint. Used by CI only.
-apiVersion: blueprints.plexsphere.com/v1alpha1
+# blueprint. Not part of the published bundle; used by CI only. The
+# composite is Namespaced, so it carries a namespace mimicking the
+# broker's per-Project management-fleet namespace (plexsphere-project-<id>).
+apiVersion: blueprints.plexsphere.com/v1alpha2
 kind: XOpenStackInstance
 metadata:
   name: example-openstack-instance
+  namespace: plexsphere-project-example
 spec:
   parameters:
-    availabilityZone: nova
+    imageName: ubuntu-24.04
     flavorName: m1.small
-    rootVolumeGb: 50
+    networkName: lab
   userData: "#cloud-config\n"
   cloudTags:
     plexsphere:example: "true"

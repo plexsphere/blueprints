@@ -1,15 +1,17 @@
 {
   "slug": "openstack-instance",
   "displayName": "OpenStack Instance",
-  "description": "A single OpenStack Nova compute instance bootstrapped through cloud-init user-data.",
-  "version": "v1alpha1",
+  "description": "A single OpenStack Nova server that boots the plexsphere broker's cloud-init document and registers as a plexsphere node.",
+  "version": "v1alpha2",
   "providerKinds": ["openstack"],
   "injectionStrategy": "cloud-init-user-data",
+  "meshRole": "node",
   "parameterSchema": {
     "parameters": [
-      {"name": "availabilityZone", "type": "string", "required": true},
+      {"name": "imageName", "type": "string", "required": true},
       {"name": "flavorName", "type": "string", "required": true},
-      {"name": "rootVolumeGb", "type": "integer", "required": false, "default": 50}
+      {"name": "networkName", "type": "string", "required": true},
+      {"name": "availabilityZone", "type": "string", "required": false}
     ]
   }
 }

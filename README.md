@@ -35,6 +35,7 @@ its composition.
 | [`aws-s3-bucket`](catalog/aws-s3-bucket/)                         | AWS S3 Bucket                | aws                          | `provider-secret`      | `XAWSS3Bucket`            |
 | [`hetzner-server`](catalog/hetzner-server/)                       | Hetzner Cloud Server         | hetzner                      | `cloud-init-user-data` | `XHetznerServer`          |
 | [`openstack-instance`](catalog/openstack-instance/)               | OpenStack Instance           | openstack                    | `cloud-init-user-data` | `XOpenStackInstance`      |
+| [`openstack-landing-zone`](catalog/openstack-landing-zone/)       | OpenStack Landing Zone       | openstack                    | `provider-secret`      | `XOpenStackLandingZone`   |
 | [`generic-vm`](catalog/generic-vm/)                               | Generic VM                   | aws, gcp, hetzner, openstack | `cloud-init-user-data` | `XGenericVM`              |
 | [`kubernetes-cloudless-node`](catalog/kubernetes-cloudless-node/) | Cloudless Kubernetes Node    | aws                          | `helm-values`          | `XKubernetesCloudlessNode` |
 
@@ -89,6 +90,33 @@ XRD deletes every `XOpenStackInstance` on that cluster and, under the
 default `deletionPolicy: Delete`, its OpenStack server.
 Request parameters: `imageName` (required), `flavorName` (required),
 `networkName` (required), `availabilityZone` (optional, no default).
+
+**`openstack-landing-zone`** — A private network, a subnet and a router
+whose gateway sits on the cloud's external network, plus the router
+interface, for `openstack-instance` servers to attach to by network
+name. The XRD is `Namespaced` (the broker renders it into the
+per-Project management-fleet namespace), so the composition renders
+four namespaced `networking.openstack.m.crossplane.io/v1alpha1`
+resources of `provider-openstack` v0.11.0 (`NetworkV2`, `SubnetV2`,
+`RouterV2`, `RouterInterfaceV2`), bound to the `ProviderConfig` named
+`openstack` that the broker writes into the same namespace. The subnet,
+the router and the interface find each other through
+`matchControllerRef` selectors, and a `function-auto-ready` step marks
+the composite `Ready` once all four are. The network, the subnet and
+the router take the `networkName` parameter as their name and, without
+it, the composite's namespace (`plexsphere-project-<project-id>`), so
+an operator knows the name to pass to `openstack-instance` before the
+landing zone exists. The composite's status carries `networkName`,
+`networkId`, `subnetId` and `routerId`. Declares `meshRole: standalone`
+(see [Mesh role](#mesh-role)); `injectionStrategy` is
+`provider-secret` because the descriptor requires one, and a
+standalone entry never injects. No security group is composed, and
+`spec.cloudTags` is not patched (see [Cloud tags](#cloud-tags)).
+Request parameters: `externalNetworkId` (required, the Neutron UUID of
+the external network), `networkName` (optional, defaults to the
+namespace), `cidr` (default `192.168.42.0/24`), `dnsNameserver`
+(optional, one resolver; without it the subnet hands out the cloud's
+DHCP default).
 
 **`generic-vm`** — A provider-agnostic single VM bootstrapped through
 cloud-init user-data, targetable at any supported substrate. The base is a
@@ -146,11 +174,12 @@ which the broker reads to decide the resource lifecycle:
   `Enrolling` (and `Deregistering`).
 
 `kubernetes-cloudless-node` is a `node` (it renders an enrolment Job that
-registers against the control plane); `aws-s3-bucket` is `standalone`, so
-the broker can drive it `Pending → Provisioning → Ready` against a local
-AWS emulator with no node to wait on. `openstack-instance` declares `node`
-explicitly. The remaining four blueprints omit the field and inherit the
-`node` default.
+registers against the control plane); `aws-s3-bucket` and
+`openstack-landing-zone` are `standalone`: the broker drives the bucket
+`Pending → Provisioning → Ready` against a local AWS emulator with no
+node to wait on, and the landing zone the same way against OpenStack.
+`openstack-instance` declares `node` explicitly. The remaining four
+blueprints omit the field and inherit the `node` default.
 
 ### Cloud tags
 
@@ -171,9 +200,12 @@ per provider:
 field, which the provider-specific composition rewrites to its own
 dialect.
 
-The `kubernetes-cloudless-node` blueprint is the exception: it renders
+Two blueprints are the exception. `kubernetes-cloudless-node` renders
 entirely in-cluster through provider-kubernetes and has no cloud tagging
-field to map onto, so its composition does not patch `spec.cloudTags`.
+field to map onto. `openstack-landing-zone` composes Neutron objects
+whose `tags` field is a list of strings, which
+`function-patch-and-transform` cannot build from the tag map. Neither
+composition patches `spec.cloudTags`.
 
 ## Conventions
 

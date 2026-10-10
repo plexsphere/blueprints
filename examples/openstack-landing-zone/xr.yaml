@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Example composite for `crossplane render` of the openstack-landing-zone
+# blueprint. Not part of the published bundle; used by CI only. The
+# composite is Namespaced, so it carries a namespace mimicking the
+# broker's per-Project management-fleet namespace (plexsphere-project-<id>).
+# Only the required externalNetworkId is set, so the render proves the
+# three optional patches tolerate absent sources and the network, subnet
+# and router take the namespace as their name.
+apiVersion: blueprints.plexsphere.com/v1alpha1
+kind: XOpenStackLandingZone
+metadata:
+  name: example-openstack-landing-zone
+  namespace: plexsphere-project-example
+spec:
+  parameters:
+    externalNetworkId: 3f4c2a6e-9c1b-4e5d-8a7f-0b1c2d3e4f5a
+  cloudTags:
+    plexsphere:example: "true"

@@ -1,0 +1,17 @@
+{
+  "slug": "openstack-landing-zone",
+  "displayName": "OpenStack Landing Zone",
+  "description": "A private network, subnet and router whose gateway sits on the cloud's external network, for openstack-instance servers to attach to.",
+  "version": "v1alpha1",
+  "providerKinds": ["openstack"],
+  "injectionStrategy": "provider-secret",
+  "meshRole": "standalone",
+  "parameterSchema": {
+    "parameters": [
+      {"name": "externalNetworkId", "type": "string", "required": true},
+      {"name": "networkName", "type": "string", "required": false},
+      {"name": "cidr", "type": "string", "required": false, "default": "192.168.42.0/24"},
+      {"name": "dnsNameserver", "type": "string", "required": false}
+    ]
+  }
+}

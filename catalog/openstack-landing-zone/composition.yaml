@@ -1,0 +1,148 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Composition for the OpenStack landing-zone blueprint. Patch-and-transform
+# renders four namespaced provider-openstack networking resources: a
+# private network, its subnet, a router whose gateway sits on the cloud's
+# external network, and the interface that plugs the subnet into the
+# router. auto-ready marks the composite Ready once all four are.
+#
+# DECISION: the network, the subnet and the router are named after the
+# networkName parameter and, without it, after the composite's namespace,
+# plexsphere-project-<project-id>, so an openstack-instance of the same
+# Project attaches to the network by a name the operator knows before the
+# landing zone exists. Rejected alternative: the composite's name
+# pr-<provisioned-resource-id>, which the broker picks and no operator can
+# predict. Rejected alternative: a required name, which leaves the
+# uniqueness of the name across Projects to the operator.
+#
+# The composite's spec.cloudTags is patched nowhere: the three Neutron
+# kinds carry tags as a list of strings, and patch-and-transform cannot
+# turn the tag map into one. No security group is composed either; the
+# servers land in the project's default group, which allows all egress.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: openstack-landing-zone
+spec:
+  compositeTypeRef:
+    apiVersion: blueprints.plexsphere.com/v1alpha1
+    kind: XOpenStackLandingZone
+  mode: Pipeline
+  pipeline:
+    - step: render-openstack-landing-zone
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: network
+            base:
+              apiVersion: networking.openstack.m.crossplane.io/v1alpha1
+              kind: NetworkV2
+              spec:
+                # DECISION: every resource authenticates through the
+                # namespaced ProviderConfig the plexsphere broker writes
+                # into the composite's namespace, named after the Cloud's
+                # provider. Rejected: the provider's default
+                # ClusterProviderConfig "default", which nothing writes.
+                providerConfigRef:
+                  kind: ProviderConfig
+                  name: openstack
+                forProvider: {}
+            patches:
+              # The namespace is the default name; a networkName
+              # parameter overrides it, and an absent one leaves it.
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.namespace
+                toFieldPath: spec.forProvider.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.networkName
+                toFieldPath: spec.forProvider.name
+              - type: ToCompositeFieldPath
+                fromFieldPath: spec.forProvider.name
+                toFieldPath: status.networkName
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.networkId
+          - name: subnet
+            base:
+              apiVersion: networking.openstack.m.crossplane.io/v1alpha1
+              kind: SubnetV2
+              spec:
+                providerConfigRef:
+                  kind: ProviderConfig
+                  name: openstack
+                # DECISION: the cidr default lives in the base, and the
+                # optional cidr patch overrides it. Rejected: a default in
+                # the composite's spec.parameters, which the broker never
+                # writes: it threads only the values the caller supplied.
+                forProvider:
+                  ipVersion: 4
+                  cidr: 192.168.42.0/24
+                  networkIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.namespace
+                toFieldPath: spec.forProvider.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.networkName
+                toFieldPath: spec.forProvider.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.cidr
+                toFieldPath: spec.forProvider.cidr
+              # Without the parameter the subnet hands out the cloud's
+              # default resolver through DHCP.
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.dnsNameserver
+                toFieldPath: spec.forProvider.dnsNameservers[0]
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.subnetId
+          - name: router
+            base:
+              apiVersion: networking.openstack.m.crossplane.io/v1alpha1
+              kind: RouterV2
+              spec:
+                providerConfigRef:
+                  kind: ProviderConfig
+                  name: openstack
+                forProvider: {}
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.namespace
+                toFieldPath: spec.forProvider.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.networkName
+                toFieldPath: spec.forProvider.name
+              # DECISION: the external network is a plain Neutron UUID,
+              # because RouterV2's externalNetworkId has no reference and
+              # no selector in provider-openstack v0.11.0. Rejected: an
+              # Observe-only NetworkV2 that imports the external network,
+              # which needs the UUID as its external name too.
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.externalNetworkId
+                toFieldPath: spec.forProvider.externalNetworkId
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.routerId
+          - name: router-interface
+            base:
+              apiVersion: networking.openstack.m.crossplane.io/v1alpha1
+              kind: RouterInterfaceV2
+              spec:
+                providerConfigRef:
+                  kind: ProviderConfig
+                  name: openstack
+                forProvider:
+                  routerIdSelector:
+                    matchControllerRef: true
+                  subnetIdSelector:
+                    matchControllerRef: true
+    - step: ready
+      functionRef:
+        name: function-auto-ready

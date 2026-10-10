@@ -1,0 +1,53 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# CompositeResourceDefinition for the OpenStack landing-zone blueprint: a
+# private network, subnet and router whose gateway sits on the cloud's
+# external network, for openstack-instance servers to attach to.
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: xopenstacklandingzones.blueprints.plexsphere.com
+spec:
+  # The broker renders the composite into the Project namespace, and a
+  # namespaced composite composes only namespaced managed resources.
+  scope: Namespaced
+  group: blueprints.plexsphere.com
+  names:
+    kind: XOpenStackLandingZone
+    plural: xopenstacklandingzones
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  description: Free-form blueprint request parameters preserved verbatim for the composition to consume.
+                  x-kubernetes-preserve-unknown-fields: true
+                cloudTags:
+                  type: object
+                  description: Propagation-resolved cloud-provider tags stamped by the broker at render time.
+                  additionalProperties:
+                    type: string
+            status:
+              type: object
+              properties:
+                networkName:
+                  type: string
+                  description: Name of the private network, the networkName an openstack-instance attaches to.
+                networkId:
+                  type: string
+                  description: Neutron id of the private network.
+                subnetId:
+                  type: string
+                  description: Neutron id of the subnet.
+                routerId:
+                  type: string
+                  description: Neutron id of the router.

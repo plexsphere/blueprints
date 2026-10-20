@@ -8,7 +8,7 @@
 # Only the required externalNetworkId is set, so the render proves the
 # three optional patches tolerate absent sources and the network, subnet
 # and router take the namespace as their name.
-apiVersion: blueprints.plexsphere.com/v1alpha1
+apiVersion: blueprints.plexsphere.com/v1alpha2
 kind: XOpenStackLandingZone
 metadata:
   name: example-openstack-landing-zone

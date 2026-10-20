@@ -17,7 +17,7 @@ spec:
     kind: XOpenStackLandingZone
     plural: xopenstacklandingzones
   versions:
-    - name: v1alpha1
+    - name: v1alpha2
       served: true
       referenceable: true
       schema:
@@ -41,10 +41,10 @@ spec:
               properties:
                 networkName:
                   type: string
-                  description: Name of the private network, the networkName an openstack-instance attaches to.
+                  description: Name of the private network, from the networkName parameter or the composite's namespace.
                 networkId:
                   type: string
-                  description: Neutron id of the private network.
+                  description: Neutron id of the private network, the networkId an openstack-instance attaches to.
                 subnetId:
                   type: string
                   description: Neutron id of the subnet.

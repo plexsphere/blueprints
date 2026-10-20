@@ -2,16 +2,38 @@
   "slug": "openstack-landing-zone",
   "displayName": "OpenStack Landing Zone",
   "description": "A private network, subnet and router whose gateway sits on the cloud's external network, for openstack-instance servers to attach to.",
-  "version": "v1alpha1",
+  "version": "v1alpha2",
   "providerKinds": ["openstack"],
   "injectionStrategy": "provider-secret",
   "meshRole": "standalone",
   "parameterSchema": {
     "parameters": [
-      {"name": "externalNetworkId", "type": "string", "required": true},
-      {"name": "networkName", "type": "string", "required": false},
-      {"name": "cidr", "type": "string", "required": false, "default": "192.168.42.0/24"},
-      {"name": "dnsNameserver", "type": "string", "required": false}
+      {
+        "name": "externalNetworkId",
+        "type": "string",
+        "required": true,
+        "description": "Id of the external Neutron network the router's gateway sits on, usually the cloud's public network.",
+        "source": "openstack.external-network"
+      },
+      {
+        "name": "networkName",
+        "type": "string",
+        "required": false,
+        "description": "Name of the private network, its subnet and the router; without it they take the composite's namespace, plexsphere-project-<project-id>."
+      },
+      {
+        "name": "cidr",
+        "type": "string",
+        "required": false,
+        "default": "192.168.42.0/24",
+        "description": "IPv4 CIDR of the private subnet."
+      },
+      {
+        "name": "dnsNameserver",
+        "type": "string",
+        "required": false,
+        "description": "One DNS resolver the subnet hands out through DHCP; without it the cloud's default resolver."
+      }
     ]
   }
 }

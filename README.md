@@ -39,7 +39,7 @@ its composition.
 | [`generic-vm`](catalog/generic-vm/)                               | Generic VM                   | aws, gcp, hetzner, openstack | `cloud-init-user-data` | `XGenericVM`              |
 | [`kubernetes-cloudless-node`](catalog/kubernetes-cloudless-node/) | Cloudless Kubernetes Node    | aws                          | `helm-values`          | `XKubernetesCloudlessNode` |
 
-Every blueprint is at version `v1alpha1` except `openstack-instance`, which is at `v1alpha3`.
+Every blueprint is at version `v1alpha1` except `openstack-instance`, which is at `v1alpha3`, and `openstack-landing-zone`, which is at `v1alpha2`.
 
 ### Blueprint details
 
@@ -103,7 +103,7 @@ source `openstack.availability-zone`).
 **`openstack-landing-zone`** — A private network, a subnet and a router
 whose gateway sits on the cloud's external network, plus the router
 interface, for `openstack-instance` servers to attach to by network
-name. The XRD is `Namespaced` (the broker renders it into the
+id. The XRD is `Namespaced` (the broker renders it into the
 per-Project management-fleet namespace), so the composition renders
 four namespaced `networking.openstack.m.crossplane.io/v1alpha1`
 resources of `provider-openstack` v0.11.0 (`NetworkV2`, `SubnetV2`,
@@ -114,18 +114,22 @@ the router and the interface find each other through
 the composite `Ready` once all four are. The network, the subnet and
 the router take the `networkName` parameter as their name and, without
 it, the composite's namespace (`plexsphere-project-<project-id>`), so
-an operator knows the name to pass to `openstack-instance` before the
-landing zone exists. The composite's status carries `networkName`,
-`networkId`, `subnetId` and `routerId`. Declares `meshRole: standalone`
+an operator recognises the Project's network in the console's list when
+creating an `openstack-instance`. The composite's status carries
+`networkName`, `networkId`, `subnetId` and `routerId`. Version `v1alpha1`
+declared the same parameters without descriptions or sources; a
+management cluster that holds the `v1alpha1` entry deletes the XRD and
+the Composition before applying `v1alpha2`, which deletes its composites
+and their Neutron objects. Declares `meshRole: standalone`
 (see [Mesh role](#mesh-role)); `injectionStrategy` is
 `provider-secret` because the descriptor requires one, and a
 standalone entry never injects. No security group is composed, and
 `spec.cloudTags` is not patched (see [Cloud tags](#cloud-tags)).
-Request parameters: `externalNetworkId` (required, the Neutron UUID of
-the external network), `networkName` (optional, defaults to the
-namespace), `cidr` (default `192.168.42.0/24`), `dnsNameserver`
-(optional, one resolver; without it the subnet hands out the cloud's
-DHCP default).
+Request parameters: `externalNetworkId` (required, source
+`openstack.external-network`, the Neutron UUID of the external network),
+`networkName` (optional, defaults to the namespace), `cidr` (default
+`192.168.42.0/24`), `dnsNameserver` (optional, one resolver; without it
+the subnet hands out the cloud's DHCP default).
 
 **`generic-vm`** — A provider-agnostic single VM bootstrapped through
 cloud-init user-data, targetable at any supported substrate. The base is a

@@ -9,12 +9,13 @@
 #
 # DECISION: the network, the subnet and the router are named after the
 # networkName parameter and, without it, after the composite's namespace,
-# plexsphere-project-<project-id>, so an openstack-instance of the same
-# Project attaches to the network by a name the operator knows before the
-# landing zone exists. Rejected alternative: the composite's name
-# pr-<provisioned-resource-id>, which the broker picks and no operator can
-# predict. Rejected alternative: a required name, which leaves the
-# uniqueness of the name across Projects to the operator.
+# plexsphere-project-<project-id>, so an operator recognises the Project's
+# network in the console's network list, where an openstack-instance picks
+# it by id once the landing zone has composed it. Rejected alternative:
+# the composite's name pr-<provisioned-resource-id>, which the broker
+# picks and no operator can predict. Rejected alternative: a required
+# name, which leaves the uniqueness of the name across Projects to the
+# operator.
 #
 # The composite's spec.cloudTags is patched nowhere: the three Neutron
 # kinds carry tags as a list of strings, and patch-and-transform cannot
@@ -26,7 +27,7 @@ metadata:
   name: openstack-landing-zone
 spec:
   compositeTypeRef:
-    apiVersion: blueprints.plexsphere.com/v1alpha1
+    apiVersion: blueprints.plexsphere.com/v1alpha2
     kind: XOpenStackLandingZone
   mode: Pipeline
   pipeline:

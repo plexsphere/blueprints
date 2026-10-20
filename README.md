@@ -39,7 +39,7 @@ its composition.
 | [`generic-vm`](catalog/generic-vm/)                               | Generic VM                   | aws, gcp, hetzner, openstack | `cloud-init-user-data` | `XGenericVM`              |
 | [`kubernetes-cloudless-node`](catalog/kubernetes-cloudless-node/) | Cloudless Kubernetes Node    | aws                          | `helm-values`          | `XKubernetesCloudlessNode` |
 
-Every blueprint is at version `v1alpha1` except `openstack-instance`, which is at `v1alpha2`.
+Every blueprint is at version `v1alpha1` except `openstack-instance`, which is at `v1alpha3`.
 
 ### Blueprint details
 
@@ -78,7 +78,7 @@ management-fleet namespace), so the composition renders a namespaced
 `provider-openstack` v0.11.0, bound to the `ProviderConfig` named
 `openstack` that the broker writes into the same namespace. The server
 takes its name from the composite, its image, flavor and network from the
-request, the broker's cloud-init document as user data, and the
+ids in the request, the broker's cloud-init document as user data, and the
 propagated cloud tags as server metadata; a `function-auto-ready` step
 marks the composite `Ready` once the server is. Declares `meshRole: node`
 explicitly. Version `v1alpha1` of this entry was `Cluster`-scoped; a CRD's
@@ -87,9 +87,18 @@ management cluster that still holds the `v1alpha1` entry must delete
 both the XRD `xopenstackinstances.blueprints.plexsphere.com` and the
 Composition `openstack-instance` before applying this one. Deleting the
 XRD deletes every `XOpenStackInstance` on that cluster and, under the
-default `deletionPolicy: Delete`, its OpenStack server.
-Request parameters: `imageName` (required), `flavorName` (required),
-`networkName` (required), `availabilityZone` (optional, no default).
+default `deletionPolicy: Delete`, its OpenStack server. Version
+`v1alpha2` took `imageName`, `flavorName` and `networkName`; `v1alpha3`
+takes the ids the console submits for a parameter that declares a
+`source`. A CRD cannot drop a version its `status.storedVersions` lists,
+and a Composition's `compositeTypeRef` is immutable, so a management
+cluster that holds the `v1alpha2` entry deletes the XRD and the
+Composition before applying `v1alpha3`, with the same consequence for its
+composites and servers.
+Request parameters: `imageId` (required, source `openstack.image`),
+`flavorId` (required, source `openstack.flavor`), `networkId` (required,
+source `openstack.network`), `availabilityZone` (optional, no default,
+source `openstack.availability-zone`).
 
 **`openstack-landing-zone`** — A private network, a subnet and a router
 whose gateway sits on the cloud's external network, plus the router

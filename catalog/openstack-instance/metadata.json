@@ -2,16 +2,40 @@
   "slug": "openstack-instance",
   "displayName": "OpenStack Instance",
   "description": "A single OpenStack Nova server that boots the plexsphere broker's cloud-init document and registers as a plexsphere node.",
-  "version": "v1alpha2",
+  "version": "v1alpha3",
   "providerKinds": ["openstack"],
   "injectionStrategy": "cloud-init-user-data",
   "meshRole": "node",
   "parameterSchema": {
     "parameters": [
-      {"name": "imageName", "type": "string", "required": true},
-      {"name": "flavorName", "type": "string", "required": true},
-      {"name": "networkName", "type": "string", "required": true},
-      {"name": "availabilityZone", "type": "string", "required": false}
+      {
+        "name": "imageId",
+        "type": "string",
+        "required": true,
+        "description": "Id of the Glance image the server boots from; the console lists the images the Cloud Credential's project can use.",
+        "source": "openstack.image"
+      },
+      {
+        "name": "flavorId",
+        "type": "string",
+        "required": true,
+        "description": "Id of the Nova flavor that sizes the server.",
+        "source": "openstack.flavor"
+      },
+      {
+        "name": "networkId",
+        "type": "string",
+        "required": true,
+        "description": "Id of the Neutron network the server's port attaches to, such as the private network an openstack-landing-zone of this Project composed.",
+        "source": "openstack.network"
+      },
+      {
+        "name": "availabilityZone",
+        "type": "string",
+        "required": false,
+        "description": "Name of the Nova availability zone the server is scheduled into; without it the cloud picks one.",
+        "source": "openstack.availability-zone"
+      }
     ]
   }
 }

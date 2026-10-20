@@ -11,7 +11,7 @@ metadata:
   name: openstack-instance
 spec:
   compositeTypeRef:
-    apiVersion: blueprints.plexsphere.com/v1alpha2
+    apiVersion: blueprints.plexsphere.com/v1alpha3
     kind: XOpenStackInstance
   mode: Pipeline
   pipeline:
@@ -41,19 +41,24 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.name
                 toFieldPath: spec.forProvider.name
+              # DECISION: the server is addressed by ids, because the
+              # console submits the id of the object a member picks for a
+              # parameter that declares a source. Rejected: a source on
+              # name-taking parameters, which would hand InstanceV2 an id
+              # where it reads a name.
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.imageName
-                toFieldPath: spec.forProvider.imageName
+                fromFieldPath: spec.parameters.imageId
+                toFieldPath: spec.forProvider.imageId
                 policy:
                   fromFieldPath: Required
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.flavorName
-                toFieldPath: spec.forProvider.flavorName
+                fromFieldPath: spec.parameters.flavorId
+                toFieldPath: spec.forProvider.flavorId
                 policy:
                   fromFieldPath: Required
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.networkName
-                toFieldPath: spec.forProvider.network[0].name
+                fromFieldPath: spec.parameters.networkId
+                toFieldPath: spec.forProvider.network[0].uuid
                 policy:
                   fromFieldPath: Required
               - type: FromCompositeFieldPath

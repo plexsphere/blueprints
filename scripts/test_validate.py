@@ -519,9 +519,9 @@ class CatalogTest(unittest.TestCase):
             return validate.validate_blueprint(d)
 
     @staticmethod
-    def set_on_image_name(meta: dict, **fields: object) -> None:
+    def set_on_image_id(meta: dict, **fields: object) -> None:
         for entry in meta["parameterSchema"]["parameters"]:
-            if entry["name"] == "imageName":
+            if entry["name"] == "imageId":
                 entry.update(fields)
 
     def run_main(self, slug: str, mutate) -> tuple[int, str]:
@@ -544,17 +544,18 @@ class CatalogTest(unittest.TestCase):
                 self.assertEqual([], validate.validate_blueprint(d))
 
     def test_bad_source_fails_through_validate_blueprint(self) -> None:
-        got = self.validate_copy(lambda m: self.set_on_image_name(m, source="openstack.flavour"))
+        got = self.validate_copy(lambda m: self.set_on_image_id(m, source="openstack.flavour"))
         self.assertEqual(
             [
                 "openstack-instance: parameterSchema: "
-                'parameter "imageName" declares unknown source "openstack.flavour"'
+                'parameter "imageId" declares unknown source "openstack.flavour"'
             ],
             got,
         )
 
-    def test_listed_source_passes_through_validate_blueprint(self) -> None:
-        got = self.validate_copy(lambda m: self.set_on_image_name(m, source="openstack.image"))
+    def test_sourced_parameter_without_a_description_passes(self) -> None:
+        # The import accepts a sourced parameter without a description.
+        got = self.validate_copy(lambda m: self.set_on_image_id(m, description=None))
         self.assertEqual([], got)
 
     def test_missing_parameter_schema_is_reported_once(self) -> None:
@@ -567,14 +568,21 @@ class CatalogTest(unittest.TestCase):
     def test_provider_kinds_string_does_not_raise(self) -> None:
         def mutate(meta: dict) -> None:
             meta["providerKinds"] = "openstack"
-            self.set_on_image_name(meta, source="openstack.image")
 
         self.assertEqual(
             [
                 "openstack-instance: providerKinds must be a non-empty list",
-                "openstack-instance: parameterSchema: "
-                'parameter "imageName" declares source "openstack.image", '
-                'whose provider kind "openstack" the entry does not list',
+                *(
+                    "openstack-instance: parameterSchema: "
+                    f'parameter "{name}" declares source "{source}", '
+                    'whose provider kind "openstack" the entry does not list'
+                    for name, source in (
+                        ("imageId", "openstack.image"),
+                        ("flavorId", "openstack.flavor"),
+                        ("networkId", "openstack.network"),
+                        ("availabilityZone", "openstack.availability-zone"),
+                    )
+                ),
             ],
             self.validate_copy(mutate),
         )
@@ -585,7 +593,7 @@ class CatalogTest(unittest.TestCase):
             shutil.copytree(ROOT / "catalog/openstack-instance", d)
             meta_p = d / "metadata.json"
             text = meta_p.read_text()
-            old = '"name": "imageName",'
+            old = '"name": "imageId",'
             self.assertEqual(1, text.count(old))
             meta_p.write_text(text.replace(old, old + ' "source": "openstack.flavour", "source": null,'))
             got = validate.validate_blueprint(d)
@@ -646,7 +654,7 @@ class CatalogTest(unittest.TestCase):
     def test_main_prints_a_lone_surrogate_as_u_fffd(self) -> None:
         code, out = self.run_main(
             "openstack-instance",
-            lambda m: self.set_on_image_name(m, name="\ud800", type="float"),
+            lambda m: self.set_on_image_id(m, name="\ud800", type="float"),
         )
         self.assertEqual(1, code)
         self.assertIn(

@@ -17,7 +17,7 @@ spec:
     kind: XOpenStackInstance
     plural: xopenstackinstances
   versions:
-    - name: v1alpha2
+    - name: v1alpha3
       served: true
       referenceable: true
       schema:

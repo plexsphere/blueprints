@@ -5,16 +5,16 @@
 # blueprint. Not part of the published bundle; used by CI only. The
 # composite is Namespaced, so it carries a namespace mimicking the
 # broker's per-Project management-fleet namespace (plexsphere-project-<id>).
-apiVersion: blueprints.plexsphere.com/v1alpha2
+apiVersion: blueprints.plexsphere.com/v1alpha3
 kind: XOpenStackInstance
 metadata:
   name: example-openstack-instance
   namespace: plexsphere-project-example
 spec:
   parameters:
-    imageName: ubuntu-24.04
-    flavorName: m1.small
-    networkName: lab
+    imageId: 7c5a3d1e-2b4f-4a6c-9d8e-0f1a2b3c4d5e
+    flavorId: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+    networkId: 5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a8b9
   userData: "#cloud-config\n"
   cloudTags:
     plexsphere:example: "true"

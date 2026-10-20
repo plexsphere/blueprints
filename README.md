@@ -340,7 +340,11 @@ crossplane render examples/<slug>/xr.yaml catalog/<slug>/composition.yaml exampl
    list. It also refuses a key repeated within one JSON object, which
    the import accepts but reads occurrence by occurrence. plexsphere's
    [author-a-blueprint guide](https://github.com/plexsphere/plexsphere/blob/main/docs/how-to/provisioning/author-a-blueprint.md)
-   lists every rule.
+   lists every rule. Name a `string` parameter that takes the id of a
+   cloud object after that id (`imageId`, not `imageName`) and declare
+   its `source`: the console lists the objects the Cloud Credential sees
+   and submits the chosen id. Give every parameter a `description`; the
+   form shows it as the field's hint.
 4. Open a PR. The `validate` workflow gates lint, structural validation,
    the build dry-run, and render. Once merged, cut a new `v*` tag to
    publish a signed bundle.

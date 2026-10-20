@@ -543,6 +543,42 @@ class CatalogTest(unittest.TestCase):
             with self.subTest(slug=d.name):
                 self.assertEqual([], validate.validate_blueprint(d))
 
+    def test_openstack_entries_declare_sources_and_descriptions(self) -> None:
+        # The console offers a parameter's cloud objects only when it
+        # declares a source, and shows its description as the field's hint.
+        cases = {
+            "openstack-instance": (
+                "v1alpha3",
+                {
+                    "imageId": "openstack.image",
+                    "flavorId": "openstack.flavor",
+                    "networkId": "openstack.network",
+                    "availabilityZone": "openstack.availability-zone",
+                },
+            ),
+            "openstack-landing-zone": (
+                "v1alpha2",
+                {
+                    "externalNetworkId": "openstack.external-network",
+                    "networkName": None,
+                    "cidr": None,
+                    "dnsNameserver": None,
+                },
+            ),
+        }
+        for slug, (version, sources) in cases.items():
+            with self.subTest(slug=slug):
+                meta = json.loads((ROOT / "catalog" / slug / "metadata.json").read_text())
+                params = meta["parameterSchema"]["parameters"]
+                self.assertEqual(version, meta["version"])
+                self.assertEqual(len(sources), len(params))
+                self.assertEqual(sources, {entry["name"]: entry.get("source") for entry in params})
+                for entry in params:
+                    with self.subTest(slug=slug, parameter=entry["name"]):
+                        description = entry.get("description")
+                        self.assertIsInstance(description, str)
+                        self.assertNotEqual("", description.strip())
+
     def test_bad_source_fails_through_validate_blueprint(self) -> None:
         got = self.validate_copy(lambda m: self.set_on_image_id(m, source="openstack.flavour"))
         self.assertEqual(

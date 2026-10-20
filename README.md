@@ -304,7 +304,8 @@ cosign verify ghcr.io/plexsphere/blueprints:v0.1.0 \
 All checks the CI gate runs are reproducible locally:
 
 ```sh
-python3 scripts/validate.py                  # structural checks (manifest.ValidatePair mirror)
+python3 scripts/validate.py                  # structural + parameter-schema checks (mirrors manifest.ValidatePair and ParseParameterSchema)
+python3 -m unittest discover -s scripts -p 'test_*.py'  # validator unit tests
 yamllint -c .yamllint.yml catalog/ examples/ # lint
 scripts/build-bundle.sh --dry-run ghcr.io/plexsphere/blueprints:dev  # assemble into ./_bundle, no push
 crossplane render examples/<slug>/xr.yaml catalog/<slug>/composition.yaml examples/functions.yaml
@@ -318,7 +319,15 @@ crossplane render examples/<slug>/xr.yaml catalog/<slug>/composition.yaml exampl
 2. Add an `examples/<slug>/xr.yaml` composite so CI can `crossplane
    render` it.
 3. Run `python3 scripts/validate.py` and the lint/render steps above
-   until green.
+   until green. The validator refuses a `parameterSchema` that a
+   plexsphere import would refuse: an unknown key, a type other than
+   `string`, `integer` or `boolean`, a default or allowed value of the
+   wrong type, a required parameter with a default, or a `source`
+   outside the closed set or whose provider kind the entry does not
+   list. It also refuses a key repeated within one JSON object, which
+   the import accepts but reads occurrence by occurrence. plexsphere's
+   [author-a-blueprint guide](https://github.com/plexsphere/plexsphere/blob/main/docs/how-to/provisioning/author-a-blueprint.md)
+   lists every rule.
 4. Open a PR. The `validate` workflow gates lint, structural validation,
    the build dry-run, and render. Once merged, cut a new `v*` tag to
    publish a signed bundle.

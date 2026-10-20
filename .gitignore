@@ -1,0 +1,5 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+
+# Written when the validator unit tests import scripts/validate.py.
+__pycache__/

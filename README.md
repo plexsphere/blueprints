@@ -39,7 +39,7 @@ its composition.
 | [`generic-vm`](catalog/generic-vm/)                               | Generic VM                   | aws, gcp, hetzner, openstack | `cloud-init-user-data` | `XGenericVM`              |
 | [`kubernetes-cloudless-node`](catalog/kubernetes-cloudless-node/) | Cloudless Kubernetes Node    | aws                          | `helm-values`          | `XKubernetesCloudlessNode` |
 
-Every blueprint is at version `v1alpha1` except `openstack-instance`, which is at `v1alpha3`, and `openstack-landing-zone`, which is at `v1alpha2`.
+Every blueprint is at version `v1alpha1` except `openstack-instance`, which is at `v1alpha4`, and `openstack-landing-zone`, which is at `v1alpha2`.
 
 ### Blueprint details
 
@@ -73,15 +73,58 @@ Request parameters: `location` (required), `serverType` (required),
 **`openstack-instance`** — A single OpenStack Nova server that boots the
 plexsphere broker's cloud-init document and registers as a plexsphere
 node. The XRD is `Namespaced` (the broker renders it into the per-Project
-management-fleet namespace), so the composition renders a namespaced
-`compute.openstack.m.crossplane.io/v1alpha1` `InstanceV2` of
-`provider-openstack` v0.11.0, bound to the `ProviderConfig` named
-`openstack` that the broker writes into the same namespace. The server
-takes its name from the composite, its image, flavor and network from the
-ids in the request, the broker's cloud-init document as user data, and the
-propagated cloud tags as server metadata; a `function-auto-ready` step
-marks the composite `Ready` once the server is. Declares `meshRole: node`
-explicitly. Version `v1alpha1` of this entry was `Cluster`-scoped; a CRD's
+management-fleet namespace), so the composition renders namespaced
+resources of `provider-openstack` v0.11.0, each bound to the
+`ProviderConfig` named `openstack` that the broker writes into the same
+namespace. The server is a `compute.openstack.m.crossplane.io/v1alpha1`
+`InstanceV2` that takes its name from the composite, its image and flavor
+from the ids in the request, the broker's cloud-init document as user
+data, and the propagated cloud tags as server metadata. It attaches
+through a `networking.openstack.m.crossplane.io/v1alpha1` `PortV2` on the
+requested network. The port carries the server's own `SecgroupV2`, named
+after the composite, whose two `SecgroupRuleV2` admit plexd's WireGuard
+port, UDP 51820, from `0.0.0.0/0` and `::/0`; the two egress rules
+Neutron puts into every new group keep egress open. The port carries no
+other group, so the project's `default` group no longer applies to the
+server, and its neighbours reach it on UDP 51820 only. With a
+`floatingIpNetworkId`, the composition also observes that external
+network through an Observe-only `NetworkV2` to learn its name, allocates
+a `FloatingipV2` from it and associates it with the port through a
+`FloatingipAssociateV2`; a `function-cel-filter` step drops those three
+resources when the parameter is absent or empty. The provider finds the
+pool by that name and takes the first network carrying it, so the
+external network's name must be unique among the networks the project
+sees. A management cluster installs `function-cel-filter` (pinned in
+[`examples/functions.yaml`](examples/functions.yaml)) before it imports
+`v1alpha4`; without the Function every new composite fails at the
+pipeline step `filter-floating-ip`. A `function-auto-ready` step marks
+the composite `Ready` once its resources are. Each resource takes the id
+it needs from the observed resource it depends on in the same reconcile.
+The composite's status reports `securityGroupId`, and with a floating IP
+`floatingIpPool` and `floatingIpAddress`. Declares `meshRole: node`
+explicitly.
+
+Each server adds one security group and four rules to its OpenStack
+project. At Neutron's default quotas of 10 security groups and 100 rules
+per project, a project holds nine such servers beside its `default`
+group.
+
+A failure leaves the composite unready and names its cause on the
+composed resource's condition. A `floatingIpNetworkId` naming no network
+the project sees leaves the `NetworkV2` at
+`external resource does not exist`, and no floating IP is composed. The
+id of a network that is not external fails the `FloatingipV2` with
+Neutron's `Network <id> is not a valid external network`. When another
+network shares the external network's name, the floating IP fails the
+same way or comes from that other network, depending on which of the two
+Neutron lists first. An exhausted floating IP quota or pool fails it with
+`OverQuota` or `IpAddressGenerationFailure`. An exhausted security group
+quota fails the `SecgroupV2` with `OverQuota`, and the port and the
+server are never created. On teardown Neutron refuses to delete a group
+that a port still carries (`SecurityGroupInUse`), and the provider
+retries until the port is gone.
+
+Version `v1alpha1` of this entry was `Cluster`-scoped; a CRD's
 scope and a Composition's `compositeTypeRef` are immutable, so a
 management cluster that still holds the `v1alpha1` entry must delete
 both the XRD `xopenstackinstances.blueprints.plexsphere.com` and the
@@ -90,15 +133,19 @@ XRD deletes every `XOpenStackInstance` on that cluster and, under the
 default `deletionPolicy: Delete`, its OpenStack server. Version
 `v1alpha2` took `imageName`, `flavorName` and `networkName`; `v1alpha3`
 takes the ids the console submits for a parameter that declares a
-`source`. A CRD cannot drop a version its `status.storedVersions` lists,
-and a Composition's `compositeTypeRef` is immutable, so a management
-cluster that holds the `v1alpha2` entry deletes the XRD and the
-Composition before applying `v1alpha3`, with the same consequence for its
-composites and servers.
+`source`; `v1alpha4` adds the security group, the port and the optional
+floating IP. A CRD cannot drop a version its `status.storedVersions`
+lists, and a Composition's `compositeTypeRef` is immutable, so a
+management cluster that holds the `v1alpha2` or `v1alpha3` entry deletes
+the XRD and the Composition before applying `v1alpha4`, with the same
+consequence for its composites and servers.
 Request parameters: `imageId` (required, source `openstack.image`),
 `flavorId` (required, source `openstack.flavor`), `networkId` (required,
-source `openstack.network`), `availabilityZone` (optional, no default,
-source `openstack.availability-zone`).
+source `openstack.network`, the network the port attaches to),
+`availabilityZone` (optional, no default, source
+`openstack.availability-zone`), `floatingIpNetworkId` (optional, no
+default, source `openstack.external-network`; without it the server gets
+no floating IP).
 
 **`openstack-landing-zone`** — A private network, a subnet and a router
 whose gateway sits on the cloud's external network, plus the router
@@ -124,7 +171,10 @@ and their Neutron objects. Declares `meshRole: standalone`
 (see [Mesh role](#mesh-role)); `injectionStrategy` is
 `provider-secret` because the descriptor requires one, and a
 standalone entry never injects. No security group is composed, and
-`spec.cloudTags` is not patched (see [Cloud tags](#cloud-tags)).
+`spec.cloudTags` is not patched (see [Cloud tags](#cloud-tags)). The
+Composition's comment that servers land in the project's `default`
+group predates `openstack-instance` `v1alpha4`, whose servers carry
+their own group.
 Request parameters: `externalNetworkId` (required, source
 `openstack.external-network`, the Neutron UUID of the external network),
 `networkName` (optional, defaults to the namespace), `cidr` (default
@@ -226,7 +276,10 @@ composition patches `spec.cloudTags`.
   `blueprints.plexsphere.com`.
 - **XRD API version:** `apiextensions.crossplane.io/v2`.
 - **Composition API version:** `apiextensions.crossplane.io/v1`, run in
-  `Pipeline` mode with a single `function-patch-and-transform` step.
+  `Pipeline` mode with one `function-patch-and-transform` step that
+  renders the composed resources. `openstack-instance` follows it with a
+  `function-cel-filter` step that drops the floating-IP resources a
+  composite does not request.
 - **Composition name** matches the blueprint slug.
 - Every YAML file carries an SPDX header. The compositions document their
   base-resource choices inline as `DECISION:` notes.
@@ -321,7 +374,7 @@ python3 scripts/validate.py                  # structural + parameter-schema che
 python3 -m unittest discover -s scripts -p 'test_*.py'  # validator unit tests
 yamllint -c .yamllint.yml catalog/ examples/ # lint
 scripts/build-bundle.sh --dry-run ghcr.io/plexsphere/blueprints:dev  # assemble into ./_bundle, no push
-crossplane render examples/<slug>/xr.yaml catalog/<slug>/composition.yaml examples/functions.yaml
+crossplane render examples/<slug>/xr<case>.yaml catalog/<slug>/composition.yaml examples/functions.yaml [--observed-resources examples/<slug>/observed<case>.yaml]  # <case> is empty or -<name>; pass the observed file when the example ships one
 ```
 
 ## Adding a blueprint
@@ -330,7 +383,11 @@ crossplane render examples/<slug>/xr.yaml catalog/<slug>/composition.yaml exampl
    `metadata.json`, following the [Conventions](#conventions) above and
    carrying the SPDX header on each YAML file.
 2. Add an `examples/<slug>/xr.yaml` composite so CI can `crossplane
-   render` it.
+   render` it, and an `examples/<slug>/xr-<case>.yaml` for each further
+   shape the composition renders; CI renders every `xr*.yaml`. When the
+   composition reads observed composed resources, add
+   `examples/<slug>/observed.yaml` (and `observed-<case>.yaml`), which CI
+   passes to the matching render.
 3. Run `python3 scripts/validate.py` and the lint/render steps above
    until green. The validator refuses a `parameterSchema` that a
    plexsphere import would refuse: an unknown key, a type other than

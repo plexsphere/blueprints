@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Observed composed resources for `crossplane render` of xr.yaml. Not part
+# of the published bundle; used by CI only. The composition reads the
+# security group's id for the port and the port's id for the server from
+# the observed resources, so a render without them stops at the security
+# group. Each carries only the field the composition reads.
+apiVersion: networking.openstack.m.crossplane.io/v1alpha1
+kind: SecgroupV2
+metadata:
+  name: example-openstack-instance-security-group
+  namespace: plexsphere-project-example
+  annotations:
+    crossplane.io/composition-resource-name: security-group
+  labels:
+    crossplane.io/composite: example-openstack-instance
+status:
+  atProvider:
+    id: 9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d
+---
+apiVersion: networking.openstack.m.crossplane.io/v1alpha1
+kind: PortV2
+metadata:
+  name: example-openstack-instance-port
+  namespace: plexsphere-project-example
+  annotations:
+    crossplane.io/composition-resource-name: port
+  labels:
+    crossplane.io/composite: example-openstack-instance
+status:
+  atProvider:
+    id: 1f2e3d4c-5b6a-4978-8a9b-0c1d2e3f4a5b

@@ -3,7 +3,8 @@
 #
 # CompositeResourceDefinition for the OpenStack instance blueprint: one
 # OpenStack Nova server that boots the plexsphere broker's cloud-init
-# document and registers as a plexsphere node.
+# document and registers as a plexsphere node, behind a security group
+# that admits plexd's WireGuard port, with an optional floating IP.
 apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
@@ -17,7 +18,7 @@ spec:
     kind: XOpenStackInstance
     plural: xopenstackinstances
   versions:
-    - name: v1alpha3
+    - name: v1alpha4
       served: true
       referenceable: true
       schema:
@@ -39,3 +40,15 @@ spec:
                   description: Propagation-resolved cloud-provider tags stamped by the broker at render time.
                   additionalProperties:
                     type: string
+            status:
+              type: object
+              properties:
+                securityGroupId:
+                  type: string
+                  description: Neutron id of the server's security group, which its port carries.
+                floatingIpPool:
+                  type: string
+                  description: Name of the external network floatingIpNetworkId names, the floating IP's pool.
+                floatingIpAddress:
+                  type: string
+                  description: Address of the floating IP associated with the server's port.

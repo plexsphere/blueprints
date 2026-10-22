@@ -1,8 +1,8 @@
 {
   "slug": "openstack-instance",
   "displayName": "OpenStack Instance",
-  "description": "A single OpenStack Nova server that boots the plexsphere broker's cloud-init document and registers as a plexsphere node.",
-  "version": "v1alpha3",
+  "description": "A single OpenStack Nova server that boots the plexsphere broker's cloud-init document, registers as a plexsphere node and admits WireGuard traffic on UDP 51820, with an optional floating IP.",
+  "version": "v1alpha4",
   "providerKinds": ["openstack"],
   "injectionStrategy": "cloud-init-user-data",
   "meshRole": "node",
@@ -35,6 +35,13 @@
         "required": false,
         "description": "Name of the Nova availability zone the server is scheduled into; without it the cloud picks one.",
         "source": "openstack.availability-zone"
+      },
+      {
+        "name": "floatingIpNetworkId",
+        "type": "string",
+        "required": false,
+        "description": "Id of the external Neutron network to allocate a floating IP from, so that peers outside the server's network reach its WireGuard port; without it the server gets no floating IP.",
+        "source": "openstack.external-network"
       }
     ]
   }

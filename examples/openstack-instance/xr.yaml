@@ -5,7 +5,11 @@
 # blueprint. Not part of the published bundle; used by CI only. The
 # composite is Namespaced, so it carries a namespace mimicking the
 # broker's per-Project management-fleet namespace (plexsphere-project-<id>).
-apiVersion: blueprints.plexsphere.com/v1alpha3
+# CI renders it with observed.yaml, the ids a later reconcile observes,
+# so the render shows the port and the server. It sets no
+# floatingIpNetworkId, so the filter step drops the three floating-IP
+# resources.
+apiVersion: blueprints.plexsphere.com/v1alpha4
 kind: XOpenStackInstance
 metadata:
   name: example-openstack-instance

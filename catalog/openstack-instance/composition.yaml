@@ -2,16 +2,29 @@
 # SPDX-License-Identifier: BUSL-1.1
 #
 # Composition for the OpenStack instance blueprint. Patch-and-transform
-# renders one namespaced provider-openstack InstanceV2 from the
-# composite's name, parameters, user data and cloud tags; auto-ready
-# marks the composite Ready once the server is.
+# renders eight namespaced provider-openstack resources: the server's
+# security group and its two WireGuard rules, the port the server
+# attaches through, the InstanceV2 itself, and for a requested floating
+# IP an Observe-only import of the external network, the floating IP and
+# its association with the port. cel-filter drops those three when the
+# composite requests no floating IP; auto-ready marks the composite Ready
+# once the rest are.
+#
+# DECISION: a resource that needs another's id reads it from that
+# resource's observed status in the same reconcile, through the
+# patch-and-transform environment: the group's id for the port, the
+# port's id for the server, the external network's name for the floating
+# IP. The ids written to the composite's status are outputs only.
+# Rejected: passing them through the composite's status, which takes a
+# second reconcile and, when the status is lost, strips an existing
+# port of its only group.
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
   name: openstack-instance
 spec:
   compositeTypeRef:
-    apiVersion: blueprints.plexsphere.com/v1alpha3
+    apiVersion: blueprints.plexsphere.com/v1alpha4
     kind: XOpenStackInstance
   mode: Pipeline
   pipeline:
@@ -22,12 +35,17 @@ spec:
         apiVersion: pt.fn.crossplane.io/v1beta1
         kind: Resources
         resources:
-          - name: openstack-instance
+          # DECISION: every server gets its own security group, named after
+          # the composite, that admits plexd's WireGuard port and nothing
+          # else. Rejected: a group shared through openstack-landing-zone,
+          # which an instance could name only through a parameter no
+          # console source lists.
+          - name: security-group
             base:
-              apiVersion: compute.openstack.m.crossplane.io/v1alpha1
-              kind: InstanceV2
+              apiVersion: networking.openstack.m.crossplane.io/v1alpha1
+              kind: SecgroupV2
               spec:
-                # DECISION: the server authenticates through the
+                # DECISION: every resource authenticates through the
                 # namespaced ProviderConfig the plexsphere broker writes
                 # into the composite's namespace, named after the Cloud's
                 # provider. Rejected: the provider's default
@@ -35,8 +53,113 @@ spec:
                 providerConfigRef:
                   kind: ProviderConfig
                   name: openstack
+                forProvider:
+                  description: Admits plexd's WireGuard port (UDP 51820) on one openstack-instance server.
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.name
+              # The port takes the id from here: PortV2 offers no selector
+              # for its security groups.
+              - type: ToEnvironmentFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: securityGroupId
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.securityGroupId
+          # plexd listens on UDP 51820. WireGuard answers no packet that
+          # fails its handshake, so the port is open to any address, which
+          # covers the server's neighbours and, through a floating IP,
+          # peers outside its network.
+          - name: wireguard-ipv4
+            base:
+              apiVersion: networking.openstack.m.crossplane.io/v1alpha1
+              kind: SecgroupRuleV2
+              spec:
+                providerConfigRef:
+                  kind: ProviderConfig
+                  name: openstack
+                forProvider:
+                  direction: ingress
+                  ethertype: IPv4
+                  protocol: udp
+                  portRangeMin: 51820
+                  portRangeMax: 51820
+                  remoteIpPrefix: 0.0.0.0/0
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+          - name: wireguard-ipv6
+            base:
+              apiVersion: networking.openstack.m.crossplane.io/v1alpha1
+              kind: SecgroupRuleV2
+              spec:
+                providerConfigRef:
+                  kind: ProviderConfig
+                  name: openstack
+                forProvider:
+                  direction: ingress
+                  ethertype: IPv6
+                  protocol: udp
+                  portRangeMin: 51820
+                  portRangeMax: 51820
+                  remoteIpPrefix: ::/0
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+          # DECISION: the server attaches through a composed port, because
+          # a floating IP associates with a port and InstanceV2 never
+          # reports the port Nova creates for a network uuid. The port
+          # carries the server's group alone: it takes group ids, and the
+          # composition cannot learn the id of the project's default group,
+          # so that group no longer applies. Rejected: securityGroups on
+          # the instance, which names groups but leaves no port to carry a
+          # floating IP.
+          - name: port
+            base:
+              apiVersion: networking.openstack.m.crossplane.io/v1alpha1
+              kind: PortV2
+              spec:
+                providerConfigRef:
+                  kind: ProviderConfig
+                  name: openstack
                 forProvider: {}
             patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.networkId
+                toFieldPath: spec.forProvider.networkId
+                policy:
+                  fromFieldPath: Required
+              # The port waits for the group, and the server for the port.
+              - type: FromEnvironmentFieldPath
+                fromFieldPath: securityGroupId
+                toFieldPath: spec.forProvider.securityGroupIds[0]
+                policy:
+                  fromFieldPath: Required
+              - type: ToEnvironmentFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: portId
+          - name: openstack-instance
+            base:
+              apiVersion: compute.openstack.m.crossplane.io/v1alpha1
+              kind: InstanceV2
+              spec:
+                providerConfigRef:
+                  kind: ProviderConfig
+                  name: openstack
+                forProvider: {}
+            patches:
+              # DECISION: the port's id is patched into the network entry.
+              # Rejected: a portSelector there, because the network list is
+              # atomic under server-side apply, so every apply of the
+              # composite would erase the port the provider resolved into
+              # it and the two would rewrite the server without end.
+              - type: FromEnvironmentFieldPath
+                fromFieldPath: portId
+                toFieldPath: spec.forProvider.network[0].port
+                policy:
+                  fromFieldPath: Required
               # The provider refuses to create a server without a name.
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.name
@@ -57,11 +180,6 @@ spec:
                 policy:
                   fromFieldPath: Required
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.networkId
-                toFieldPath: spec.forProvider.network[0].uuid
-                policy:
-                  fromFieldPath: Required
-              - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.availabilityZone
                 toFieldPath: spec.forProvider.availabilityZone
               # The broker's cloud-init document.
@@ -74,6 +192,99 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.cloudTags
                 toFieldPath: spec.forProvider.metadata
+          # DECISION: FloatingipV2 takes its pool by name, which the
+          # provider looks up and offers no reference for, so the
+          # composition observes the external network the member picked by
+          # id and patches its name into the pool. The provider takes the
+          # first network of that name, so the name must be unique among
+          # the networks the project sees. Rejected: a free-text pool name,
+          # which the console cannot list.
+          - name: floating-ip-network
+            base:
+              apiVersion: networking.openstack.m.crossplane.io/v1alpha1
+              kind: NetworkV2
+              spec:
+                managementPolicies:
+                  - Observe
+                providerConfigRef:
+                  kind: ProviderConfig
+                  name: openstack
+                forProvider: {}
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.floatingIpNetworkId
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
+              - type: ToEnvironmentFieldPath
+                fromFieldPath: status.atProvider.name
+                toFieldPath: floatingIpPool
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.name
+                toFieldPath: status.floatingIpPool
+          - name: floating-ip
+            base:
+              apiVersion: networking.openstack.m.crossplane.io/v1alpha1
+              kind: FloatingipV2
+              spec:
+                providerConfigRef:
+                  kind: ProviderConfig
+                  name: openstack
+                forProvider: {}
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.description
+              - type: FromEnvironmentFieldPath
+                fromFieldPath: floatingIpPool
+                toFieldPath: spec.forProvider.pool
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.address
+                toFieldPath: status.floatingIpAddress
+          - name: floating-ip-association
+            base:
+              apiVersion: networking.openstack.m.crossplane.io/v1alpha1
+              kind: FloatingipAssociateV2
+              spec:
+                providerConfigRef:
+                  kind: ProviderConfig
+                  name: openstack
+                forProvider:
+                  floatingIpSelector:
+                    matchControllerRef: true
+                  portIdSelector:
+                    matchControllerRef: true
+    # DECISION: cel-filter keeps the floating IP optional. Patch-and-
+    # transform alone cannot: a Required patch skips a template, but any
+    # skip marks the composite unready, so a server without a floating IP
+    # would never become Ready. No template this step can drop may
+    # therefore carry a Required patch. An empty floatingIpNetworkId counts
+    # as absent. The floating IP and its association wait until the
+    # observed external network reports its name, so they join the
+    # composite in the reconcile that learns the pool, and an existing
+    # floating IP stays whatever that network reports. The filter name is
+    # a regular expression the function anchors as ^name$, so the
+    # alternation keeps its group. Rejected: a second catalog entry that
+    # always composes the floating IP, which doubles every later change to
+    # the server.
+    - step: filter-floating-ip
+      functionRef:
+        name: function-cel-filter
+      input:
+        apiVersion: cel.fn.crossplane.io/v1beta1
+        kind: Filters
+        filters:
+          - name: floating-ip-network
+            expression: >-
+              has(observed.composite.resource.spec.parameters.floatingIpNetworkId)
+              && observed.composite.resource.spec.parameters.floatingIpNetworkId != ''
+          - name: floating-ip(-association)?
+            expression: >-
+              has(observed.composite.resource.spec.parameters.floatingIpNetworkId)
+              && observed.composite.resource.spec.parameters.floatingIpNetworkId != ''
+              && ('floating-ip' in observed.resources
+              || ('floating-ip-network' in observed.resources
+              && has(observed.resources['floating-ip-network'].resource.status)
+              && has(observed.resources['floating-ip-network'].resource.status.atProvider)
+              && has(observed.resources['floating-ip-network'].resource.status.atProvider.name)))
     - step: ready
       functionRef:
         name: function-auto-ready

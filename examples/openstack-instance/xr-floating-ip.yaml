@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Example composite for `crossplane render` of the openstack-instance
+# blueprint with a floating IP. Not part of the published bundle; used by
+# CI only. The composite is Namespaced, so it carries a namespace
+# mimicking the broker's per-Project management-fleet namespace
+# (plexsphere-project-<id>). It requests a floating IP, and CI renders it
+# with observed-floating-ip.yaml, the ids and the pool name a later
+# reconcile observes, so the render shows all eight resources.
+apiVersion: blueprints.plexsphere.com/v1alpha4
+kind: XOpenStackInstance
+metadata:
+  name: example-openstack-instance
+  namespace: plexsphere-project-example
+spec:
+  parameters:
+    imageId: 7c5a3d1e-2b4f-4a6c-9d8e-0f1a2b3c4d5e
+    flavorId: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+    networkId: 5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a8b9
+    floatingIpNetworkId: 3f4c2a6e-9c1b-4e5d-8a7f-0b1c2d3e4f5a
+  userData: "#cloud-config\n"
+  cloudTags:
+    plexsphere:example: "true"

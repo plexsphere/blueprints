@@ -1,0 +1,46 @@
+# SPDX-FileCopyrightText: Copyright 2026 plexsphere contributors
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Observed composed resources for `crossplane render` of
+# xr-floating-ip.yaml. Not part of the published bundle; used by CI only.
+# Beside the ids of observed.yaml it carries the name the Observe-only
+# import of the external network reports, which the floating IP takes as
+# its pool. Each carries only the field the composition reads.
+apiVersion: networking.openstack.m.crossplane.io/v1alpha1
+kind: SecgroupV2
+metadata:
+  name: example-openstack-instance-security-group
+  namespace: plexsphere-project-example
+  annotations:
+    crossplane.io/composition-resource-name: security-group
+  labels:
+    crossplane.io/composite: example-openstack-instance
+status:
+  atProvider:
+    id: 9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d
+---
+apiVersion: networking.openstack.m.crossplane.io/v1alpha1
+kind: PortV2
+metadata:
+  name: example-openstack-instance-port
+  namespace: plexsphere-project-example
+  annotations:
+    crossplane.io/composition-resource-name: port
+  labels:
+    crossplane.io/composite: example-openstack-instance
+status:
+  atProvider:
+    id: 1f2e3d4c-5b6a-4978-8a9b-0c1d2e3f4a5b
+---
+apiVersion: networking.openstack.m.crossplane.io/v1alpha1
+kind: NetworkV2
+metadata:
+  name: example-openstack-instance-floating-ip-network
+  namespace: plexsphere-project-example
+  annotations:
+    crossplane.io/composition-resource-name: floating-ip-network
+  labels:
+    crossplane.io/composite: example-openstack-instance
+status:
+  atProvider:
+    name: public

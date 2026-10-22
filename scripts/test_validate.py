@@ -10,10 +10,13 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import re
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
+
+import yaml
 
 import validate
 
@@ -548,12 +551,13 @@ class CatalogTest(unittest.TestCase):
         # declares a source, and shows its description as the field's hint.
         cases = {
             "openstack-instance": (
-                "v1alpha3",
+                "v1alpha4",
                 {
                     "imageId": "openstack.image",
                     "flavorId": "openstack.flavor",
                     "networkId": "openstack.network",
                     "availabilityZone": "openstack.availability-zone",
+                    "floatingIpNetworkId": "openstack.external-network",
                 },
             ),
             "openstack-landing-zone": (
@@ -578,6 +582,35 @@ class CatalogTest(unittest.TestCase):
                         description = entry.get("description")
                         self.assertIsInstance(description, str)
                         self.assertNotEqual("", description.strip())
+
+    def test_openstack_instance_filters_only_the_floating_ip_resources(self) -> None:
+        # function-cel-filter anchors each filter name as "^" + name + "$",
+        # so an alternation without a group matches more than it names.
+        # Patch-and-transform marks the composite unready whenever a
+        # Required patch skips a template, so no template the filter can
+        # drop may carry one: a server without a floating IP would never
+        # become Ready.
+        comp = yaml.safe_load((ROOT / "catalog/openstack-instance/composition.yaml").read_text())
+        pipeline = comp["spec"]["pipeline"]
+        self.assertEqual(
+            ["render-openstack-instance", "filter-floating-ip", "ready"],
+            [step["step"] for step in pipeline],
+        )
+        templates = pipeline[0]["input"]["resources"]
+        names = [template["name"] for template in templates]
+        self.assertEqual(
+            [["floating-ip-network"], ["floating-ip", "floating-ip-association"]],
+            [
+                [name for name in names if re.search("^" + f["name"] + "$", name)]
+                for f in pipeline[1]["input"]["filters"]
+            ],
+        )
+        for template in templates:
+            if not template["name"].startswith("floating-ip"):
+                continue
+            for patch in template.get("patches", []):
+                with self.subTest(template=template["name"], patch=patch["toFieldPath"]):
+                    self.assertNotEqual("Required", patch.get("policy", {}).get("fromFieldPath"))
 
     def test_bad_source_fails_through_validate_blueprint(self) -> None:
         got = self.validate_copy(lambda m: self.set_on_image_id(m, source="openstack.flavour"))
@@ -617,6 +650,7 @@ class CatalogTest(unittest.TestCase):
                         ("flavorId", "openstack.flavor"),
                         ("networkId", "openstack.network"),
                         ("availabilityZone", "openstack.availability-zone"),
+                        ("floatingIpNetworkId", "openstack.external-network"),
                     )
                 ),
             ],

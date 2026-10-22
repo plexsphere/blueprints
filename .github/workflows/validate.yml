@@ -59,10 +59,21 @@ jobs:
           set -euo pipefail
           for d in catalog/*/; do
             slug="$(basename "$d")"
-            echo "::group::render $slug"
-            crossplane render \
-              "examples/${slug}/xr.yaml" \
-              "${d}composition.yaml" \
-              examples/functions.yaml
-            echo "::endgroup::"
+            for xr in "examples/${slug}"/xr*.yaml; do
+              name="$(basename "$xr")"
+              # xr<case>.yaml renders with observed<case>.yaml when an
+              # example ships the observed composed resources it needs.
+              observed="examples/${slug}/observed${name#xr}"
+              args=()
+              if [[ -f "$observed" ]]; then
+                args=(--observed-resources "$observed")
+              fi
+              echo "::group::render $slug ($name)"
+              crossplane render \
+                "$xr" \
+                "${d}composition.yaml" \
+                examples/functions.yaml \
+                "${args[@]}"
+              echo "::endgroup::"
+            done
           done
